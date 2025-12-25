@@ -1,86 +1,78 @@
 members:
   day_shift:
     index_1_2_group:
-    - name: 丸岡
-      active: true
-    - name: 今井
-      active: true
-    - name: 加藤凌
-      active: true
-    - name: 加藤貴
-      active: true
-    - name: 勅使河原
-      active: true
-    - name: 宮本
-      active: true
-    - name: 斉藤
-      active: true
-    - name: 新井洋
-      active: true
-    - name: 新井翔
-      active: true
-    - name: 木村
-      active: true
-    - name: 楮本
-      active: true
-    - name: 矢野
-      active: true
-    - name: 高橋剛
-      active: true
-    - name: 高橋拓
-      active: true
-    - name: 高橋良
-      active: true
-    - name: 髙田
-      active: true
+      - name: 丸岡
+        active: true
+      - name: 今井
+        active: true
+      - name: 加藤凌
+        active: true
+      - name: 加藤貴
+        active: true
+      - name: 勅使河原
+        active: true
+      - name: 斉藤
+        active: true
+      - name: 新井洋
+        active: true
+      - name: 新井翔
+        active: true
+      - name: 木村
+        active: true
+      - name: 楮本
+        active: true
+      - name: 矢野
+        active: true
+      - name: 高橋拓
+        active: true
+      - name: 高橋良
+        active: true
+      - name: 髙田
+        active: true
+      - name: 隝田
+        active: true
     index_3_group:
-    - name: 大関
-      active: true
-    - name: 小久保
-      active: true
-    - name: 小林直
-      active: true
-    - name: 近藤
-      active: true
-    - name: 隝田
-      active: true
+      - name: 大関
+        active: true
+      - name: 小久保
+        active: true
+      - name: 小林直
+        active: true
+      - name: 塩田
+        active: true
   night_shift:
     index_1_group:
-    - name: 丸岡
-      active: true
-    - name: 加藤凌
-      active: true
-    - name: 宮本
-      active: true
-    - name: 新井洋
-      active: true
-    - name: 木村
-      active: true
-    - name: 楮本
-      active: true
-    - name: 矢野
-      active: true
-    - name: 高橋剛
-      active: true
-    - name: 高橋拓
-      active: true
+      - name: 丸岡
+        active: true
+      - name: 加藤凌
+        active: true
+      - name: 新井洋
+        active: true
+      - name: 木村
+        active: true
+      - name: 楮本
+        active: true
+      - name: 矢野
+        active: true
+      - name: 高橋拓
+        active: true
+      - name: 隝田
+        active: true
     index_2_group:
-    - name: 大関
-      active: true
-    - name: 小久保
-      active: true
-    - name: 小林直
-      active: true
-    - name: 松田
-      active: true
-      fixed_pattern: biweekly
-    - name: 隝田
-      active: true
+      - name: 大関
+        active: true
+      - name: 小久保
+        active: true
+      - name: 小林直
+        active: true
+      - name: 松田
+        active: true
+        fixed_pattern: biweekly
 matsuda_schedule:
   enabled: true
   index: 2
   pattern: biweekly
-  reference_date: '2025-02-20'
+  reference_date: "2025-02-20"
 constraints:
   rotation_period:
     start_day: 21
@@ -89,7 +81,7 @@ constraints:
     max_deviation_ratio: 0.3
   interval:
     min_days_between_same_person_day: 14
-    min_days_between_same_person_night: 21
+    min_days_between_same_person_night: 14
   no_overlap:
     enabled: true
   night_to_day_gap:
