@@ -8,7 +8,7 @@ if Path("dist").exists():
 if Path("build").exists():
     shutil.rmtree("build")
 
-PyInstaller.__main__.run([
+args = [
     'web/app.py',
     '--name=AutoArranger',
     '--onefile',
@@ -27,7 +27,17 @@ PyInstaller.__main__.run([
     '--hidden-import=pandas',
     '--hidden-import=yaml',
     '--clean',
-])
+]
+
+# Check for icon
+icon_path = Path('web/static/resources/auto_arranger.ico').resolve()
+if icon_path.exists():
+    print(f"Icon found at: {icon_path}")
+    args.append(f'--icon={str(icon_path)}')
+else:
+    print(f"WARNING: Icon file not found at {icon_path}. Please convert the PNG to ICO to have a custom icon.")
+
+PyInstaller.__main__.run(args)
 
 print("Build complete. Executable is in 'dist' folder.")
 

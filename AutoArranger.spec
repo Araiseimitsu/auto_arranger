@@ -35,4 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['C:\\Users\\seizo\\my_projects\\1\\auto_arranger\\web\\static\\resources\\auto_arranger.ico'],
 )

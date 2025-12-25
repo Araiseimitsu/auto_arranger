@@ -31,6 +31,43 @@ class ConstraintChecker:
         self.min_days_night = constraints.get('interval', {}).get('min_days_between_same_person_night', 21)
         self.night_to_day_gap = constraints.get('night_to_day_gap', {}).get('min_days', 7)
 
+        # メンバー個別設定のマップを作成
+        self.member_configs = {}
+        if 'members' in settings:
+            m = settings['members']
+            # Helper to extract configs
+            def extract_configs(group_list):
+                if not group_list: return
+                for member in group_list:
+                    # 既存の設定があればマージ（後勝ち、または最初の設定を優先）
+                    # ここでは単純に上書きしますが、通常同じメンバーの設定は同期されている前提
+                    if member['name'] not in self.member_configs:
+                        self.member_configs[member['name']] = member
+                    else:
+                        # 既存の設定に属性を追加（例: interval設定が片方にしかない場合など）
+                        self.member_configs[member['name']].update(member)
+
+            if 'day_shift' in m:
+                extract_configs(m['day_shift'].get('index_1_2_group', []))
+                extract_configs(m['day_shift'].get('index_3_group', []))
+            if 'night_shift' in m:
+                extract_configs(m['night_shift'].get('index_1_group', []))
+                extract_configs(m['night_shift'].get('index_2_group', []))
+
+    def _get_member_min_days_day(self, member: str) -> int:
+        """メンバーごとの日勤最小間隔を取得（設定がなければデフォルト）"""
+        if member in self.member_configs:
+             val = self.member_configs[member].get('min_days_day')
+             if val is not None: return int(val)
+        return self.min_days_day
+
+    def _get_member_min_days_night(self, member: str) -> int:
+        """メンバーごとの夜勤最小間隔を取得（設定がなければデフォルト）"""
+        if member in self.member_configs:
+             val = self.member_configs[member].get('min_days_night')
+             if val is not None: return int(val)
+        return self.min_days_night
+
     def check_day_index_constraint(
         self,
         member: str,
@@ -229,8 +266,8 @@ class ConstraintChecker:
         """
         day_schedule = current_schedule.get('day', {})
         
-        # index 3は代休があるため制約を緩和(7日)、それ以外は設定値
-        min_days = 7 if target_index == 3 else self.min_days_day
+        # index 3は代休があるため制約を緩和(7日)、それ以外は設定値(個別設定優先)
+        min_days = 7 if target_index == 3 else self._get_member_min_days_day(member)
 
         # 現在のスケジュールから最終日勤日を取得
         last_day_date = None
@@ -272,6 +309,9 @@ class ConstraintChecker:
             (制約OK, エラーメッセージ)
         """
         night_schedule = current_schedule.get('night', {})
+        
+        # 個別設定優先
+        min_days = self._get_member_min_days_night(member)
 
         # 現在のスケジュールから最終夜勤週を取得
         last_night_week = None
@@ -285,8 +325,8 @@ class ConstraintChecker:
 
         if last_night_week:
             days_since = (target_week_start - last_night_week).days
-            if days_since < self.min_days_night:
-                return False, f"{member}は前回夜勤({last_night_week})から{days_since}日、最小{self.min_days_night}日必要（あと{self.min_days_night - days_since}日必要）"
+            if days_since < min_days:
+                return False, f"{member}は前回夜勤({last_night_week})から{days_since}日、最小{min_days}日必要（あと{min_days - days_since}日必要）"
 
         return True, ""
 

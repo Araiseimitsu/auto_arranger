@@ -109,10 +109,7 @@
       <p style="font-size: 14px; color: #666">
         CSVファイルをアップロードしてデータを更新します（既存データはバックアップされます）。
       </p>
-      <button
-        class="btn btn-secondary"
-        onclick="document.getElementById('upload-modal').style.display='flex'"
-      >
+      <button id="upload-btn" class="btn btn-secondary">
         CSVをアップロード...
       </button>
     </div>
@@ -120,37 +117,6 @@
     <div id="history-container">
       {% include "components/history_table.html" %}
     </div>
-  </div>
-</div>
-
-<!-- Upload Modal -->
-<div id="upload-modal" class="modal-overlay" style="display: none">
-  <div class="modal">
-    <h2>データの更新確認</h2>
-    <p>
-      現在のデータを上書きしますか？<br />この操作は取り消せませんが、バックアップは作成されます。
-    </p>
-
-    <form
-      hx-post="/upload_csv"
-      hx-encoding="multipart/form-data"
-      hx-target="#history-container"
-      hx-on::after-request="document.getElementById('upload-modal').style.display='none'"
-    >
-      <div class="form-group" style="text-align: left">
-        <input type="file" name="file" accept=".csv" required />
-      </div>
-      <div class="modal-actions">
-        <button
-          type="button"
-          class="btn btn-secondary"
-          onclick="document.getElementById('upload-modal').style.display='none'"
-        >
-          キャンセル
-        </button>
-        <button type="submit" class="btn btn-danger">更新する</button>
-      </div>
-    </form>
   </div>
 </div>
 

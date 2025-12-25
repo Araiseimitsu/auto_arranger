@@ -201,6 +201,14 @@
             >
               ×
             </button>
+            <button
+              type="button"
+              class="btn-edit"
+              onclick="openMemberModal('{{ member.name }}', '{{ member.min_days_day|default('') }}', '{{ member.min_days_night|default('') }}')"
+              title="編集"
+            >
+              ✎
+            </button>
           </div>
           {% endfor %}
         </div>
@@ -270,6 +278,14 @@
               title="削除"
             >
               ×
+            </button>
+            <button
+              type="button"
+              class="btn-edit"
+              onclick="openMemberModal('{{ member.name }}', '{{ member.min_days_day|default('') }}', '{{ member.min_days_night|default('') }}')"
+              title="編集"
+            >
+              ✎
             </button>
           </div>
           {% endfor %}
@@ -353,6 +369,14 @@
             >
               ×
             </button>
+            <button
+              type="button"
+              class="btn-edit"
+              onclick="openMemberModal('{{ member.name }}', '{{ member.min_days_day|default('') }}', '{{ member.min_days_night|default('') }}')"
+              title="編集"
+            >
+              ✎
+            </button>
           </div>
           {% endfor %}
         </div>
@@ -423,6 +447,14 @@
             >
               ×
             </button>
+            <button
+              type="button"
+              class="btn-edit"
+              onclick="openMemberModal('{{ member.name }}', '{{ member.min_days_day|default('') }}', '{{ member.min_days_night|default('') }}')"
+              title="編集"
+            >
+              ✎
+            </button>
           </div>
           {% endfor %}
         </div>
@@ -449,164 +481,114 @@
     </div>
   </div>
 
-  <style>
-    .member-group-container {
-      flex: 1;
-      min-width: 200px;
-      background: #f5f5f7;
-      padding: 15px;
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-    }
-    .sortable-list {
-      min-height: 100px;
-      flex-grow: 1; /* 親の高さいっぱいに広げる */
-      padding-bottom: 20px; /* ドロップエリアを下部に拡張 */
-    }
-    .member-card {
-      background: white;
-      padding: 10px 12px;
-      border-radius: 8px;
-      margin-bottom: 8px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      transition: all 0.2s;
-      user-select: none;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .member-card:hover {
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-      transform: translateY(-1px);
-    }
-    .sortable-ghost {
-      opacity: 0.4;
-      background: #e0e0e0;
-      border: 1px dashed #999;
-    }
-    .btn-remove {
-      background: none;
-      border: none;
-      color: #999;
-      font-size: 18px;
-      cursor: pointer;
-      padding: 0 5px;
-      line-height: 1;
-      border-radius: 4px;
-    }
-    .btn-remove:hover {
-      color: #dc3545;
-      background: #fff0f0;
-    }
-    .add-member-container {
-      display: flex;
-      gap: 5px;
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px dashed #ccc;
-    }
-    .add-member-input {
-      flex: 1;
-      padding: 6px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 13px;
-    }
-    .btn-add {
-      background: #0071e3;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      width: 30px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    .btn-add:hover {
-      background: #005bb5;
-    }
-  </style>
+  <!-- Edit Member Modal -->
+  <div id="member-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          メンバー設定: <span id="modal-member-name"></span>
+        </h3>
+        <button type="button" class="modal-close" onclick="closeMemberModal()">
+          ×
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 12px; color: #666; margin-bottom: 15px">
+          このメンバー固有の制約を設定します。空欄の場合は全体設定({{
+          settings.constraints.interval.min_days_between_same_person_day }}日 /
+          {{ settings.constraints.interval.min_days_between_same_person_night
+          }}日)が適用されます。
+        </p>
+
+        <label>日勤 最小間隔 (日)</label>
+        <input
+          type="number"
+          id="modal-min-days-day"
+          placeholder="デフォルトを使用"
+        />
+
+        <label>夜勤 最小間隔 (日)</label>
+        <input
+          type="number"
+          id="modal-min-days-night"
+          placeholder="デフォルトを使用"
+        />
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          onclick="closeMemberModal()"
+          style="margin-right: 10px"
+        >
+          キャンセル
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          onclick="saveMemberAttributes()"
+        >
+          保存
+        </button>
+      </div>
+    </div>
+  </div>
 
   <script>
-    (function () {
-      // Options for both lists
-      const sortableOptions = (groupName) => ({
-        group: {
-          name: groupName,
-          pull: true,
-          put: true,
+    // Modal Logic is now in app.js
+    let currentMemberName = "";
+
+    function openMemberModal(name, minDaysDay, minDaysNight) {
+      currentMemberName = name;
+      document.getElementById("modal-member-name").textContent = name;
+      document.getElementById("modal-min-days-day").value = minDaysDay || "";
+      document.getElementById("modal-min-days-night").value =
+        minDaysNight || "";
+
+      const modal = document.getElementById("member-modal");
+      modal.classList.add("active");
+      modal.classList.add("show");
+    }
+
+    function closeMemberModal() {
+      const modal = document.getElementById("member-modal");
+      modal.classList.remove("active");
+      modal.classList.remove("show");
+      currentMemberName = "";
+    }
+
+    function saveMemberAttributes() {
+      if (!currentMemberName) return;
+
+      const data = {
+        name: currentMemberName,
+        min_days_day: document.getElementById("modal-min-days-day").value,
+        min_days_night: document.getElementById("modal-min-days-night").value,
+      };
+
+      fetch("/settings/member/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        animation: 150,
-        ghostClass: "sortable-ghost",
-        delay: 0, // 即座にドラッグ開始
-        fallbackOnBody: true, // ドラッグ中の要素をbodyに追加してz-index問題を回避
-        swapThreshold: 0.65,
-        onEnd: function (evt) {
-          updateInputName(evt.item, evt.to);
-        },
-      });
-
-      // Initialize Sortable for Day lists
-      const dayLists = document.querySelectorAll(".day-list");
-      dayLists.forEach((list) => {
-        new Sortable(list, sortableOptions("day"));
-      });
-
-      // Initialize Sortable for Night lists
-      const nightLists = document.querySelectorAll(".night-list");
-      nightLists.forEach((list) => {
-        new Sortable(list, sortableOptions("night"));
-      });
-
-      function updateInputName(item, targetList) {
-        const baseName = targetList.getAttribute("data-input-name");
-        const hiddenInput = item.querySelector(".member-id");
-        const checkbox = item.querySelector('input[type="checkbox"]');
-
-        if (hiddenInput && baseName) {
-          hiddenInput.name = baseName + "[]";
-        }
-
-        // Update checkbox name prefix (active_NAME_day/night)
-        // suffix is 'day' or 'night' based on target list name
-        if (checkbox) {
-          const suffix = baseName.startsWith("day") ? "day" : "night";
-          // We need to keep the NAME part. Assuming current format active_{name}_{oldSuffix}
-          // This is tricky because name is in the middle.
-          // Easier to rebuild from the hidden value (member name)
-          const memberName = hiddenInput.value;
-          checkbox.name = "active_" + memberName + "_" + suffix;
-        }
-      }
-    })();
-
-    function addMember(input, listName) {
-      const name = input.value.trim();
-      if (!name) return;
-
-      // Determine suffix (day or night) from listName (e.g., day_index_1_2)
-      const suffix = listName.startsWith("day") ? "day" : "night";
-
-      // Create card HTML
-      const card = document.createElement("div");
-      card.className = "member-card";
-      card.innerHTML = `
-                <input type="hidden" name="${listName}[]" value="${name}" class="member-id">
-                <label style="display: flex; align-items: center; width: 100%; cursor: grab;">
-                    <input type="checkbox" name="active_${name}_${suffix}" checked style="width: auto; margin-right: 8px;">
-                    <span style="flex-grow: 1">${name}</span>
-                </label>
-                <button type="button" class="btn-remove" onclick="this.closest('.member-card').remove()" title="削除">×</button>
-            `;
-
-      // Append to list
-      const list = document.querySelector(
-        `.sortable-list[data-input-name="${listName}"]`
-      );
-      list.appendChild(card);
-
-      // Clear input
-      input.value = "";
+        body: JSON.stringify(data),
+      })
+        .then((response) => response.json())
+        .then((result) => {
+          if (result.success) {
+            closeMemberModal();
+            // Reload the settings tab or show success
+            // Simple way: trigger form submit or reload page?
+            // Since this is HTMX context, let's just alert or ideally refresh part.
+            // But the member card buttons have hardcoded values. We should reload the page.
+            window.location.reload();
+          } else {
+            alert("エラー: " + result.error);
+          }
+        })
+        .catch((error) => {
+          alert("通信エラー: " + error);
+        });
     }
   </script>
 </form>

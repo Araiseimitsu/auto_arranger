@@ -16,11 +16,12 @@ from .services import (
     add_member_ng_date, remove_member_ng_date,
     add_period_ng, remove_period_ng,
     get_all_members,
+    get_resource_path,
     CSV_PATH
 )
 
 router = APIRouter()
-templates = Jinja2Templates(directory="web/templates")
+templates = Jinja2Templates(directory=str(get_resource_path("web/templates")))
 
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
@@ -59,6 +60,25 @@ async def update_settings(request: Request):
     form_data = await request.form()
     
     # Reconstruct settings object from flat lists
+    # First, build a map of existing member configs to preserve attributes (e.g., fixed_pattern)
+    current_settings_loaded = load_settings()
+    existing_member_configs = {}
+    
+    if "members" in current_settings_loaded:
+        m = current_settings_loaded["members"]
+        # Helper to extract configs
+        def extract_configs(group_list):
+            if not group_list: return
+            for member in group_list:
+                existing_member_configs[member['name']] = member
+        
+        if "day_shift" in m:
+            extract_configs(m["day_shift"].get("index_1_2_group", []))
+            extract_configs(m["day_shift"].get("index_3_group", []))
+        if "night_shift" in m:
+            extract_configs(m["night_shift"].get("index_1_group", []))
+            extract_configs(m["night_shift"].get("index_2_group", []))
+
     new_settings = {"members": {"day_shift": {}, "night_shift": {}}}
     
     def process_group(form_list_key, active_suffix):
@@ -69,10 +89,15 @@ async def update_settings(request: Request):
             # key format: active_{name}_{suffix}
             active_key = f"active_{name}_{active_suffix}"
             is_active = form_data.get(active_key) == "on"
-            group_list.append({
-                "name": name,
-                "active": is_active
-            })
+            
+            # Start with existing config or new dict
+            member_conf = existing_member_configs.get(name, {}).copy()
+            
+            # Update core fields
+            member_conf["name"] = name
+            member_conf["active"] = is_active
+            
+            group_list.append(member_conf)
         return group_list
 
     # Day Shift
@@ -292,3 +317,57 @@ async def save_result(request: Request):
         return HTMLResponse(f"<div class='success'>CSVを保存しました: {path}</div>")
     else:
         return HTMLResponse(f"<div class='error'>保存失敗: {message}</div>")
+
+# Member Attribute Operations
+@router.post("/settings/member/update", response_class=JSONResponse)
+async def update_member_attributes(request: Request):
+    """Update specific attributes for a member without rebuilding lists"""
+    try:
+        data = await request.json()
+        member_name = data.get('name')
+        if not member_name:
+            return JSONResponse({"success": False, "error": "Member name required"}, status_code=400)
+            
+        settings = load_settings()
+        
+        # Helper to find and update member in all lists
+        def update_in_group(group_list):
+            if not group_list: return False
+            updated = False
+            for m in group_list:
+                if m['name'] == member_name:
+                    # Update fields
+                    if 'min_days_day' in data:
+                        val = data['min_days_day']
+                        if val == "": 
+                            m.pop('min_days_day', None)
+                        else:
+                            m['min_days_day'] = int(val)
+                            
+                    if 'min_days_night' in data:
+                        val = data['min_days_night']
+                        if val == "":
+                            m.pop('min_days_night', None)
+                        else:
+                            m['min_days_night'] = int(val)
+                    updated = True
+            return updated
+
+        found = False
+        if "members" in settings:
+            m = settings["members"]
+            if "day_shift" in m:
+                if update_in_group(m["day_shift"].get("index_1_2_group", [])): found = True
+                if update_in_group(m["day_shift"].get("index_3_group", [])): found = True
+            if "night_shift" in m:
+                if update_in_group(m["night_shift"].get("index_1_group", [])): found = True
+                if update_in_group(m["night_shift"].get("index_2_group", [])): found = True
+        
+        if found:
+            save_settings(settings)
+            return JSONResponse({"success": True})
+        else:
+            return JSONResponse({"success": False, "error": "Member not found"}, status_code=404)
+            
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)

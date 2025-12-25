@@ -1,30 +1,127 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}当番表自動作成システム{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="/static/resources/auto_arranger.ico" />
+    <link rel="stylesheet" href="/static/css/style.css?v=0.5.6" />
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
-    <script src="/static/js/app.js"></script>
-</head>
-<body>
+    <script src="/static/js/app.js?v=0.5.6" defer></script>
+  </head>
+  <body>
     <div class="container">
-        <header>
-            <h1>{% block header %}当番表自動作成{% endblock %}</h1>
-            <p>{% block subheader %}Auto Arranger System{% endblock %}</p>
-        </header>
-        
-        <main>
-            {% block content %}{% endblock %}
-        </main>
-        
-        <footer>
-            <div style="text-align: center; margin-top: 40px; color: #86868b; font-size: 12px;">
-                &copy; {{ current_year }} Auto Arranger. Local Version.
-            </div>
-        </footer>
+      <button id="help-btn" class="btn btn-secondary help-button">HELP</button>
+      <header class="app-header">
+        <img
+          src="/static/resources/images/auto_arranger.png"
+          alt="Auto Arranger Icon"
+          class="app-icon"
+        />
+        <div class="header-content">
+          <h1>{% block header %}当番表自動作成{% endblock %}</h1>
+          <p>{% block subheader %}Auto Arranger System{% endblock %}</p>
+        </div>
+      </header>
+
+      <main>{% block content %}{% endblock %}</main>
+
+      <footer>
+        <div
+          style="
+            text-align: center;
+            margin-top: 40px;
+            color: #86868b;
+            font-size: 12px;
+          "
+        >
+          &copy; {{ current_year }} Auto Arranger. Local Version.
+        </div>
+      </footer>
     </div>
-</body>
+
+    <!-- Modals (Outside container) -->
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal-overlay">
+      <div class="modal help-modal-content">
+        <div class="modal-header">
+          <h2>使用方法</h2>
+          <button class="close-modal-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <h3>概要</h3>
+          <p>
+            当番表自動作成システムへようこそ。<br />過去の履歴と制約に基づき、公平な当番表を自動生成します。
+          </p>
+
+          <h3>手順</h3>
+          <ol>
+            <li>
+              <strong>設定 (Settings)</strong><br />
+              「Settings」タブで、メンバーの有効化やパラメータ調整を行います。
+            </li>
+            <li>
+              <strong>NG日設定 (NG Dates)</strong><br />
+              「NG Dates」タブで、当番に入れない日や休日を設定します。
+            </li>
+            <li>
+              <strong>作成</strong><br />
+              「Home」タブで開始日を指定して「作成」を実行します。
+            </li>
+          </ol>
+
+          <div class="app-info">
+            <hr />
+            <p>Latest: 2025-12-25</p>
+            <p>Version: 0.5.0</p>
+            <p>Created By DIP Department/A・T</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="upload-modal" class="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>データの更新確認</h2>
+          <button
+            type="button"
+            class="close-modal-btn"
+            id="x-close-upload-modal-btn"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>
+            現在のデータを上書きしますか？<br />この操作は取り消せませんが、バックアップは作成されます。
+          </p>
+
+          <form
+            hx-post="/upload_csv"
+            hx-encoding="multipart/form-data"
+            hx-target="#history-container"
+            hx-on::after-request="document.getElementById('upload-modal').classList.remove('show')"
+          >
+            <div class="form-group" style="text-align: left">
+              <input type="file" name="file" accept=".csv" required />
+            </div>
+            <div class="modal-actions">
+              <button
+                type="button"
+                id="close-upload-modal-btn"
+                class="btn btn-secondary"
+              >
+                キャンセル
+              </button>
+              <button type="submit" class="btn btn-danger">更新する</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </body>
 </html>
