@@ -83,16 +83,48 @@ async def update_settings(request: Request):
     new_settings["members"]["night_shift"]["index_1_group"] = process_group("night_index_1[]", "night")
     new_settings["members"]["night_shift"]["index_2_group"] = process_group("night_index_2[]", "night")
     
-    # Check for Matsudas
+    # Load current settings to preserve other values
     current_settings = load_settings()
     
-    # Merge only members part
-    if "members" in current_settings:
-        current_members = current_settings["members"]
-    else:
-        current_members = {}
-        
+    # Update Members
     current_settings["members"] = new_settings["members"]
+    
+    # Update Basic Settings
+    # Constraints - Rotation Period (REMOVED from UI, keeping defaults or existing)
+    # We no longer update start_day/duration from form_data as they are removed from UI.
+
+    # Constraints - Intervals (New)
+    if "constraints" not in current_settings: current_settings["constraints"] = {}
+    if "interval" not in current_settings["constraints"]: current_settings["constraints"]["interval"] = {}
+    if "night_to_day_gap" not in current_settings["constraints"]: current_settings["constraints"]["night_to_day_gap"] = {}
+
+    try:
+        # Day Interval
+        min_days_day = form_data.get("min_days_day")
+        if min_days_day is not None:
+             current_settings["constraints"]["interval"]["min_days_between_same_person_day"] = int(min_days_day)
+        
+        # Night Interval
+        min_days_night = form_data.get("min_days_night")
+        if min_days_night is not None:
+             current_settings["constraints"]["interval"]["min_days_between_same_person_night"] = int(min_days_night)
+
+        # Night to Day Gap
+        min_gap = form_data.get("min_gap_night_day")
+        if min_gap is not None:
+            current_settings["constraints"]["night_to_day_gap"]["min_days"] = int(min_gap)
+            
+    except ValueError:
+        pass # Ignore invalid ints
+        
+    # Matsuda Schedule
+    if "matsuda_schedule" not in current_settings: current_settings["matsuda_schedule"] = {}
+    
+    current_settings["matsuda_schedule"]["enabled"] = form_data.get("matsuda_enabled") == "on"
+    
+    ref_date = form_data.get("matsuda_reference_date")
+    if ref_date:
+        current_settings["matsuda_schedule"]["reference_date"] = ref_date
     
     try:
         save_settings(current_settings)
@@ -194,12 +226,19 @@ async def remove_period_ng_route(request: Request):
 @router.post("/generate", response_class=HTMLResponse)
 async def generate_schedule(request: Request):
     form_data = await request.form()
-    start_date = form_data.get('start_date')
+    start_date_str = form_data.get('start_date')
     
-    if not start_date:
+    if not start_date_str:
         return HTMLResponse("<div class='error'>開始日を指定してください</div>")
         
-    success, result, message = run_schedule_generation(start_date)
+    try:
+        start_date = date.fromisoformat(start_date_str)
+        if start_date.day != 21:
+             return HTMLResponse("<div class='error'>開始日は21日を指定してください</div>")
+    except ValueError:
+        return HTMLResponse("<div class='error'>無効な日付形式です</div>")
+
+    success, result, message = run_schedule_generation(start_date_str)
     
     if not success:
         return HTMLResponse(f"<div class='error'>{message}</div>")

@@ -1,91 +1,157 @@
-{% extends "base.html" %}
-
-{% block content %}
+{% extends "base.html" %} {% block content %}
 
 <!-- Tabs -->
 <div class="nav-tabs">
-    <div class="nav-item active" data-target="tab-generate">作成</div>
-    <div class="nav-item" data-target="tab-settings">メンバー設定</div>
-    <div class="nav-item" data-target="tab-ng-dates">NG日程</div>
-    <div class="nav-item" data-target="tab-history">履歴データ</div>
+  <div class="nav-item active" data-target="tab-generate">作成</div>
+  <div class="nav-item" data-target="tab-settings">メンバー設定</div>
+  <div class="nav-item" data-target="tab-ng-dates">NG日程</div>
+  <div class="nav-item" data-target="tab-history">履歴データ</div>
 </div>
 
 <!-- Tab: Generate -->
 <div id="tab-generate" class="tab-section">
-    <div class="card">
-        <div class="card-header">
-            <h2>スケジュール作成</h2>
-        </div>
-        <form hx-post="/generate" hx-target="#generation-result" hx-indicator="#loading">
-            <div class="form-group">
-                <label for="start_date">開始日 (各月21日推奨)</label>
-                <input type="date" id="start_date" name="start_date" value="{{ today }}" required>
-            </div>
-            
-            <button type="submit" class="btn btn-primary">作成開始</button>
-            <span id="loading" class="htmx-indicator" style="margin-left: 10px; display:none;">処理中...</span>
-        </form>
+  <div class="card">
+    <div class="card-header">
+      <h2>スケジュール作成</h2>
     </div>
+    <form
+      hx-post="/generate"
+      hx-target="#generation-result"
+      hx-indicator="#loading"
+      id="generate-form"
+    >
+      <div class="form-group">
+        <label for="start_date">開始日 (各月21日必須)</label>
+        <input
+          type="date"
+          id="start_date"
+          name="start_date"
+          value="{{ today }}"
+          required
+          onchange="validateDate(this)"
+        />
+        <p
+          id="date-error"
+          style="color: red; display: none; margin-top: 5px; font-size: 14px"
+        >
+          開始日は21日を指定してください。
+        </p>
+      </div>
 
-    <div id="generation-result"></div>
+      <button type="submit" class="btn btn-primary" id="generate-btn">
+        作成開始
+      </button>
+      <span
+        id="loading"
+        class="htmx-indicator"
+        style="margin-left: 10px; display: none"
+        >処理中...</span
+      >
+    </form>
+  </div>
+
+  <script>
+    function validateDate(input) {
+      const btn = document.getElementById("generate-btn");
+      const error = document.getElementById("date-error");
+      const date = new Date(input.value);
+
+      if (date.getDate() !== 21) {
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        error.style.display = "block";
+      } else {
+        btn.disabled = false;
+        btn.style.opacity = "1";
+        error.style.display = "none";
+      }
+    }
+
+    // Initial check
+    document.addEventListener("DOMContentLoaded", function () {
+      const input = document.getElementById("start_date");
+      if (input.value) validateDate(input);
+    });
+  </script>
+
+  <div id="generation-result"></div>
 </div>
 
 <!-- Tab: Settings -->
 <div id="tab-settings" class="tab-section hidden">
-    <div class="card">
-        <div class="card-header">
-            <h2>メンバー設定</h2>
-        </div>
-        {% include "components/settings_form.html" %}
+  <div class="card">
+    <div class="card-header">
+      <h2>メンバー設定</h2>
     </div>
+    {% include "components/settings_form.html" %}
+  </div>
 </div>
 
 <!-- Tab: NG Dates -->
 <div id="tab-ng-dates" class="tab-section hidden">
-    <div class="card">
-        <div class="card-header">
-            <h2>NG日程 / 除外日</h2>
-        </div>
-        {% include "components/ng_dates_form.html" %}
+  <div class="card">
+    <div class="card-header">
+      <h2>NG日程 / 除外日</h2>
     </div>
+    {% include "components/ng_dates_form.html" %}
+  </div>
 </div>
 
 <!-- Tab: History -->
 <div id="tab-history" class="tab-section hidden">
-    <div class="card">
-        <div class="card-header">
-            <h2>履歴データ管理</h2>
-        </div>
-        
-        <div style="margin-bottom: 20px;">
-            <h3>データアップロード</h3>
-            <p style="font-size: 14px; color: #666;">CSVファイルをアップロードしてデータを更新します（既存データはバックアップされます）。</p>
-            <button class="btn btn-secondary" onclick="document.getElementById('upload-modal').style.display='flex'">CSVをアップロード...</button>
-        </div>
-
-        <div id="history-container">
-            {% include "components/history_table.html" %}
-        </div>
+  <div class="card">
+    <div class="card-header">
+      <h2>履歴データ管理</h2>
     </div>
+
+    <div style="margin-bottom: 20px">
+      <h3>データアップロード</h3>
+      <p style="font-size: 14px; color: #666">
+        CSVファイルをアップロードしてデータを更新します（既存データはバックアップされます）。
+      </p>
+      <button
+        class="btn btn-secondary"
+        onclick="document.getElementById('upload-modal').style.display='flex'"
+      >
+        CSVをアップロード...
+      </button>
+    </div>
+
+    <div id="history-container">
+      {% include "components/history_table.html" %}
+    </div>
+  </div>
 </div>
 
 <!-- Upload Modal -->
-<div id="upload-modal" class="modal-overlay" style="display: none;">
-    <div class="modal">
-        <h2>データの更新確認</h2>
-        <p>現在のデータを上書きしますか？<br>この操作は取り消せませんが、バックアップは作成されます。</p>
-        
-        <form hx-post="/upload_csv" hx-encoding="multipart/form-data" hx-target="#history-container" hx-on::after-request="document.getElementById('upload-modal').style.display='none'">
-            <div class="form-group" style="text-align: left;">
-                <input type="file" name="file" accept=".csv" required>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="document.getElementById('upload-modal').style.display='none'">キャンセル</button>
-                <button type="submit" class="btn btn-danger">更新する</button>
-            </div>
-        </form>
-    </div>
+<div id="upload-modal" class="modal-overlay" style="display: none">
+  <div class="modal">
+    <h2>データの更新確認</h2>
+    <p>
+      現在のデータを上書きしますか？<br />この操作は取り消せませんが、バックアップは作成されます。
+    </p>
+
+    <form
+      hx-post="/upload_csv"
+      hx-encoding="multipart/form-data"
+      hx-target="#history-container"
+      hx-on::after-request="document.getElementById('upload-modal').style.display='none'"
+    >
+      <div class="form-group" style="text-align: left">
+        <input type="file" name="file" accept=".csv" required />
+      </div>
+      <div class="modal-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          onclick="document.getElementById('upload-modal').style.display='none'"
+        >
+          キャンセル
+        </button>
+        <button type="submit" class="btn btn-danger">更新する</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 {% endblock %}
-

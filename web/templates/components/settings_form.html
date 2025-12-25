@@ -1,169 +1,612 @@
 <form hx-post="/settings/update" hx-target="#settings-form-container">
-    <div id="settings-form-container">
-        {% if success_message %}
-        <div style="background: #e8f5e9; color: #2e7d32; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
-            {{ success_message }}
-        </div>
-        {% endif %}
+  <div id="settings-form-container">
+    {% if success_message %}
+    <div
+      style="
+        background: #e8f5e9;
+        color: #2e7d32;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+      "
+    >
+      {{ success_message }}
+    </div>
+    {% endif %}
 
-        <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
-            ドラッグ＆ドロップでメンバーのグループを移動できます。<br>
-            チェックボックスで有効/無効を切り替えます。
+    <p style="font-size: 14px; color: #666; margin-bottom: 20px">
+      ドラッグ＆ドロップでメンバーのグループを移動できます。<br />
+      チェックボックスで有効/無効を切り替えます。
+    </p>
+
+    <!-- Basic Settings Section -->
+    <h3
+      style="border-left: 4px solid #ff9500; padding-left: 10px; margin-top: 0"
+    >
+      基本設定
+    </h3>
+    <div
+      style="
+        background: #f5f5f7;
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+      "
+    >
+      <div>
+        <label
+          style="
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+          "
+        >
+          <input
+            type="checkbox"
+            name="matsuda_enabled"
+            {%
+            if
+            settings.matsuda_schedule.enabled
+            %}checked{%
+            endif
+            %}
+            style="margin-right: 8px"
+          />
+          松田固定スケジュールを有効にする
+        </label>
+        <div style="margin-left: 24px">
+          <label style="display: block; font-size: 14px; margin-bottom: 5px"
+            >基準日</label
+          >
+          <input
+            type="date"
+            name="matsuda_reference_date"
+            value="{{ settings.matsuda_schedule.reference_date }}"
+            style="padding: 8px; border-radius: 6px; border: 1px solid #ddd"
+          />
+          <p style="font-size: 12px; color: #666; margin-top: 4px">
+            隔週パターンの基準となる日付
+          </p>
+        </div>
+      </div>
+
+      <div
+        style="
+          margin-top: 20px;
+          border-top: 1px solid #e0e0e0;
+          padding-top: 20px;
+        "
+      >
+        <h4 style="margin: 0 0 15px 0; font-size: 14px; color: #555">
+          制約設定
+        </h4>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap">
+          <div style="flex: 1; min-width: 150px">
+            <label style="display: block; font-size: 13px; margin-bottom: 5px"
+              >日勤間隔 (日)</label
+            >
+            <input
+              type="number"
+              name="min_days_day"
+              value="{{ settings.constraints.interval.min_days_between_same_person_day }}"
+              min="0"
+              style="
+                width: 100%;
+                padding: 6px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+              "
+            />
+          </div>
+          <div style="flex: 1; min-width: 150px">
+            <label style="display: block; font-size: 13px; margin-bottom: 5px"
+              >夜勤間隔 (日)</label
+            >
+            <input
+              type="number"
+              name="min_days_night"
+              value="{{ settings.constraints.interval.min_days_between_same_person_night }}"
+              min="0"
+              style="
+                width: 100%;
+                padding: 6px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+              "
+            />
+          </div>
+          <div style="flex: 1; min-width: 150px">
+            <label style="display: block; font-size: 13px; margin-bottom: 5px"
+              >夜勤→日勤間隔 (日)</label
+            >
+            <input
+              type="number"
+              name="min_gap_night_day"
+              value="{{ settings.constraints.night_to_day_gap.min_days }}"
+              min="0"
+              style="
+                width: 100%;
+                padding: 6px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+              "
+            />
+          </div>
+        </div>
+        <p style="font-size: 12px; color: #666; margin-top: 8px">
+          ※指定した日数以内の連続勤務を禁止します
         </p>
-
-        <!-- Day Shift Section -->
-        <h3 style="border-left: 4px solid #0071e3; padding-left: 10px; margin-top: 20px;">日勤メンバー</h3>
-        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-            
-            <!-- Day Group 1 & 2 -->
-            <div class="member-group-container">
-                <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #555; text-transform: uppercase;">休日1・2</h4>
-                <div class="sortable-list day-list" data-input-name="day_index_1_2">
-                    {% for member in settings.members.day_shift.index_1_2_group %}
-                    <div class="member-card">
-                        <input type="hidden" name="day_index_1_2[]" value="{{ member.name }}" class="member-id">
-                        <label style="display: flex; align-items: center; width: 100%; cursor: grab;">
-                            <input type="checkbox" name="active_{{ member.name }}_day" {% if member.active %}checked{% endif %} style="width: auto; margin-right: 8px;">
-                            <span>{{ member.name }}</span>
-                        </label>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- Day Group 3 -->
-            <div class="member-group-container">
-                <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #555; text-transform: uppercase;">休日3</h4>
-                <div class="sortable-list day-list" data-input-name="day_index_3">
-                    {% for member in settings.members.day_shift.index_3_group %}
-                    <div class="member-card">
-                        <input type="hidden" name="day_index_3[]" value="{{ member.name }}" class="member-id">
-                        <label style="display: flex; align-items: center; width: 100%; cursor: grab;">
-                            <input type="checkbox" name="active_{{ member.name }}_day" {% if member.active %}checked{% endif %} style="width: auto; margin-right: 8px;">
-                            <span>{{ member.name }}</span>
-                        </label>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Night Shift Section -->
-        <h3 style="border-left: 4px solid #34c759; padding-left: 10px; margin-top: 30px;">夜勤メンバー</h3>
-        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-            
-            <!-- Night Group 1 -->
-            <div class="member-group-container">
-                <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #555; text-transform: uppercase;">夜勤1</h4>
-                <div class="sortable-list night-list" data-input-name="night_index_1">
-                    {% for member in settings.members.night_shift.index_1_group %}
-                    <div class="member-card">
-                        <input type="hidden" name="night_index_1[]" value="{{ member.name }}" class="member-id">
-                        <label style="display: flex; align-items: center; width: 100%; cursor: grab;">
-                            <input type="checkbox" name="active_{{ member.name }}_night" {% if member.active %}checked{% endif %} style="width: auto; margin-right: 8px;">
-                            <span>{{ member.name }}</span>
-                        </label>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- Night Group 2 -->
-            <div class="member-group-container">
-                <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #555; text-transform: uppercase;">夜勤2</h4>
-                <div class="sortable-list night-list" data-input-name="night_index_2">
-                    {% for member in settings.members.night_shift.index_2_group %}
-                    <div class="member-card">
-                        <input type="hidden" name="night_index_2[]" value="{{ member.name }}" class="member-id">
-                        <label style="display: flex; align-items: center; width: 100%; cursor: grab;">
-                            <input type="checkbox" name="active_{{ member.name }}_night" {% if member.active %}checked{% endif %} style="width: auto; margin-right: 8px;">
-                            <span>{{ member.name }}</span>
-                        </label>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-
-        <div style="margin-top: 30px; text-align: right;">
-            <button type="submit" class="btn btn-primary">設定を保存</button>
-        </div>
+      </div>
     </div>
 
-    <style>
-        .member-group-container {
-            flex: 1;
-            min-width: 200px;
-            background: #f5f5f7;
-            padding: 15px;
-            border-radius: 12px;
-            display: flex;
-            flex-direction: column;
-        }
-        .sortable-list {
-            min-height: 100px;
-            flex-grow: 1; /* 親の高さいっぱいに広げる */
-            padding-bottom: 20px; /* ドロップエリアを下部に拡張 */
-        }
-        .member-card {
-            background: white;
-            padding: 10px 12px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            transition: all 0.2s;
-            user-select: none;
-            cursor: grab;
-        }
-        .member-card:hover {
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-            transform: translateY(-1px);
-        }
-        .sortable-ghost {
-            opacity: 0.4;
-            background: #e0e0e0;
-            border: 1px dashed #999;
-        }
-    </style>
+    <!-- Day Shift Section -->
+    <h3
+      style="
+        border-left: 4px solid #0071e3;
+        padding-left: 10px;
+        margin-top: 20px;
+      "
+    >
+      日勤メンバー
+    </h3>
+    <div style="display: flex; gap: 20px; flex-wrap: wrap">
+      <!-- Day Group 1 & 2 -->
+      <div class="member-group-container">
+        <h4
+          style="
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #555;
+            text-transform: uppercase;
+          "
+        >
+          休日1・2
+        </h4>
+        <div class="sortable-list day-list" data-input-name="day_index_1_2">
+          {% for member in settings.members.day_shift.index_1_2_group %}
+          <div class="member-card">
+            <input
+              type="hidden"
+              name="day_index_1_2[]"
+              value="{{ member.name }}"
+              class="member-id"
+            />
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                width: 100%;
+                cursor: grab;
+              "
+            >
+              <input
+                type="checkbox"
+                name="active_{{ member.name }}_day"
+                {%
+                if
+                member.active
+                %}checked{%
+                endif
+                %}
+                style="width: auto; margin-right: 8px"
+              />
+              <span style="flex-grow: 1">{{ member.name }}</span>
+            </label>
+            <button
+              type="button"
+              class="btn-remove"
+              onclick="this.closest('.member-card').remove()"
+              title="削除"
+            >
+              ×
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="add-member-container">
+          <input
+            type="text"
+            placeholder="名前"
+            class="add-member-input"
+            onkeypress="if(event.key === 'Enter') { event.preventDefault(); addMember(this, 'day_index_1_2'); }"
+          />
+          <button
+            type="button"
+            class="btn-add"
+            onclick="addMember(this.previousElementSibling, 'day_index_1_2')"
+          >
+            ＋
+          </button>
+        </div>
+      </div>
 
-    <script>
-        (function() {
-            // Options for both lists
-            const sortableOptions = (groupName) => ({
-                group: {
-                    name: groupName,
-                    pull: true,
-                    put: true
-                },
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                delay: 0, // 即座にドラッグ開始
-                fallbackOnBody: true, // ドラッグ中の要素をbodyに追加してz-index問題を回避
-                swapThreshold: 0.65,
-                onEnd: function(evt) {
-                    updateInputName(evt.item, evt.to);
-                }
-            });
+      <!-- Day Group 3 -->
+      <div class="member-group-container">
+        <h4
+          style="
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #555;
+            text-transform: uppercase;
+          "
+        >
+          休日3
+        </h4>
+        <div class="sortable-list day-list" data-input-name="day_index_3">
+          {% for member in settings.members.day_shift.index_3_group %}
+          <div class="member-card">
+            <input
+              type="hidden"
+              name="day_index_3[]"
+              value="{{ member.name }}"
+              class="member-id"
+            />
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                width: 100%;
+                cursor: grab;
+              "
+            >
+              <input
+                type="checkbox"
+                name="active_{{ member.name }}_day"
+                {%
+                if
+                member.active
+                %}checked{%
+                endif
+                %}
+                style="width: auto; margin-right: 8px"
+              />
+              <span style="flex-grow: 1">{{ member.name }}</span>
+            </label>
+            <button
+              type="button"
+              class="btn-remove"
+              onclick="this.closest('.member-card').remove()"
+              title="削除"
+            >
+              ×
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="add-member-container">
+          <input
+            type="text"
+            placeholder="名前"
+            class="add-member-input"
+            onkeypress="if(event.key === 'Enter') { event.preventDefault(); addMember(this, 'day_index_3'); }"
+          />
+          <button
+            type="button"
+            class="btn-add"
+            onclick="addMember(this.previousElementSibling, 'day_index_3')"
+          >
+            ＋
+          </button>
+        </div>
+      </div>
+    </div>
 
-            // Initialize Sortable for Day lists
-            const dayLists = document.querySelectorAll('.day-list');
-            dayLists.forEach(list => {
-                new Sortable(list, sortableOptions('day'));
-            });
+    <!-- Night Shift Section -->
+    <h3
+      style="
+        border-left: 4px solid #34c759;
+        padding-left: 10px;
+        margin-top: 30px;
+      "
+    >
+      夜勤メンバー
+    </h3>
+    <div style="display: flex; gap: 20px; flex-wrap: wrap">
+      <!-- Night Group 1 -->
+      <div class="member-group-container">
+        <h4
+          style="
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #555;
+            text-transform: uppercase;
+          "
+        >
+          夜勤1
+        </h4>
+        <div class="sortable-list night-list" data-input-name="night_index_1">
+          {% for member in settings.members.night_shift.index_1_group %}
+          <div class="member-card">
+            <input
+              type="hidden"
+              name="night_index_1[]"
+              value="{{ member.name }}"
+              class="member-id"
+            />
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                width: 100%;
+                cursor: grab;
+              "
+            >
+              <input
+                type="checkbox"
+                name="active_{{ member.name }}_night"
+                {%
+                if
+                member.active
+                %}checked{%
+                endif
+                %}
+                style="width: auto; margin-right: 8px"
+              />
+              <span style="flex-grow: 1">{{ member.name }}</span>
+            </label>
+            <button
+              type="button"
+              class="btn-remove"
+              onclick="this.closest('.member-card').remove()"
+              title="削除"
+            >
+              ×
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="add-member-container">
+          <input
+            type="text"
+            placeholder="名前"
+            class="add-member-input"
+            onkeypress="if(event.key === 'Enter') { event.preventDefault(); addMember(this, 'night_index_1'); }"
+          />
+          <button
+            type="button"
+            class="btn-add"
+            onclick="addMember(this.previousElementSibling, 'night_index_1')"
+          >
+            ＋
+          </button>
+        </div>
+      </div>
 
-            // Initialize Sortable for Night lists
-            const nightLists = document.querySelectorAll('.night-list');
-            nightLists.forEach(list => {
-                new Sortable(list, sortableOptions('night'));
-            });
+      <!-- Night Group 2 -->
+      <div class="member-group-container">
+        <h4
+          style="
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #555;
+            text-transform: uppercase;
+          "
+        >
+          夜勤2
+        </h4>
+        <div class="sortable-list night-list" data-input-name="night_index_2">
+          {% for member in settings.members.night_shift.index_2_group %}
+          <div class="member-card">
+            <input
+              type="hidden"
+              name="night_index_2[]"
+              value="{{ member.name }}"
+              class="member-id"
+            />
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                width: 100%;
+                cursor: grab;
+              "
+            >
+              <input
+                type="checkbox"
+                name="active_{{ member.name }}_night"
+                {%
+                if
+                member.active
+                %}checked{%
+                endif
+                %}
+                style="width: auto; margin-right: 8px"
+              />
+              <span style="flex-grow: 1">{{ member.name }}</span>
+            </label>
+            <button
+              type="button"
+              class="btn-remove"
+              onclick="this.closest('.member-card').remove()"
+              title="削除"
+            >
+              ×
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="add-member-container">
+          <input
+            type="text"
+            placeholder="名前"
+            class="add-member-input"
+            onkeypress="if(event.key === 'Enter') { event.preventDefault(); addMember(this, 'night_index_2'); }"
+          />
+          <button
+            type="button"
+            class="btn-add"
+            onclick="addMember(this.previousElementSibling, 'night_index_2')"
+          >
+            ＋
+          </button>
+        </div>
+      </div>
+    </div>
 
-            function updateInputName(item, targetList) {
-                const baseName = targetList.getAttribute('data-input-name');
-                const hiddenInput = item.querySelector('.member-id');
-                if (hiddenInput && baseName) {
-                    hiddenInput.name = baseName + '[]';
-                }
-            }
-        })();
-    </script>
+    <div style="margin-top: 30px; text-align: right">
+      <button type="submit" class="btn btn-primary">設定を保存</button>
+    </div>
+  </div>
+
+  <style>
+    .member-group-container {
+      flex: 1;
+      min-width: 200px;
+      background: #f5f5f7;
+      padding: 15px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+    }
+    .sortable-list {
+      min-height: 100px;
+      flex-grow: 1; /* 親の高さいっぱいに広げる */
+      padding-bottom: 20px; /* ドロップエリアを下部に拡張 */
+    }
+    .member-card {
+      background: white;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .member-card:hover {
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      transform: translateY(-1px);
+    }
+    .sortable-ghost {
+      opacity: 0.4;
+      background: #e0e0e0;
+      border: 1px dashed #999;
+    }
+    .btn-remove {
+      background: none;
+      border: none;
+      color: #999;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 5px;
+      line-height: 1;
+      border-radius: 4px;
+    }
+    .btn-remove:hover {
+      color: #dc3545;
+      background: #fff0f0;
+    }
+    .add-member-container {
+      display: flex;
+      gap: 5px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #ccc;
+    }
+    .add-member-input {
+      flex: 1;
+      padding: 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .btn-add {
+      background: #0071e3;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      width: 30px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn-add:hover {
+      background: #005bb5;
+    }
+  </style>
+
+  <script>
+    (function () {
+      // Options for both lists
+      const sortableOptions = (groupName) => ({
+        group: {
+          name: groupName,
+          pull: true,
+          put: true,
+        },
+        animation: 150,
+        ghostClass: "sortable-ghost",
+        delay: 0, // 即座にドラッグ開始
+        fallbackOnBody: true, // ドラッグ中の要素をbodyに追加してz-index問題を回避
+        swapThreshold: 0.65,
+        onEnd: function (evt) {
+          updateInputName(evt.item, evt.to);
+        },
+      });
+
+      // Initialize Sortable for Day lists
+      const dayLists = document.querySelectorAll(".day-list");
+      dayLists.forEach((list) => {
+        new Sortable(list, sortableOptions("day"));
+      });
+
+      // Initialize Sortable for Night lists
+      const nightLists = document.querySelectorAll(".night-list");
+      nightLists.forEach((list) => {
+        new Sortable(list, sortableOptions("night"));
+      });
+
+      function updateInputName(item, targetList) {
+        const baseName = targetList.getAttribute("data-input-name");
+        const hiddenInput = item.querySelector(".member-id");
+        const checkbox = item.querySelector('input[type="checkbox"]');
+
+        if (hiddenInput && baseName) {
+          hiddenInput.name = baseName + "[]";
+        }
+
+        // Update checkbox name prefix (active_NAME_day/night)
+        // suffix is 'day' or 'night' based on target list name
+        if (checkbox) {
+          const suffix = baseName.startsWith("day") ? "day" : "night";
+          // We need to keep the NAME part. Assuming current format active_{name}_{oldSuffix}
+          // This is tricky because name is in the middle.
+          // Easier to rebuild from the hidden value (member name)
+          const memberName = hiddenInput.value;
+          checkbox.name = "active_" + memberName + "_" + suffix;
+        }
+      }
+    })();
+
+    function addMember(input, listName) {
+      const name = input.value.trim();
+      if (!name) return;
+
+      // Determine suffix (day or night) from listName (e.g., day_index_1_2)
+      const suffix = listName.startsWith("day") ? "day" : "night";
+
+      // Create card HTML
+      const card = document.createElement("div");
+      card.className = "member-card";
+      card.innerHTML = `
+                <input type="hidden" name="${listName}[]" value="${name}" class="member-id">
+                <label style="display: flex; align-items: center; width: 100%; cursor: grab;">
+                    <input type="checkbox" name="active_${name}_${suffix}" checked style="width: auto; margin-right: 8px;">
+                    <span style="flex-grow: 1">${name}</span>
+                </label>
+                <button type="button" class="btn-remove" onclick="this.closest('.member-card').remove()" title="削除">×</button>
+            `;
+
+      // Append to list
+      const list = document.querySelector(
+        `.sortable-list[data-input-name="${listName}"]`
+      );
+      list.appendChild(card);
+
+      // Clear input
+      input.value = "";
+    }
+  </script>
 </form>
