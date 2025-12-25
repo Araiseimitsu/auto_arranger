@@ -23,11 +23,16 @@
 
 ### 主要ライブラリ
 - **pandas** (>=2.0.0): データ処理・分析
-- **PuLP** (>=2.7.0): 線形計画法による最適化
 - **PyYAML** (>=6.0): 設定ファイル管理
 - **tabulate** (>=0.9.0): コンソールテーブル出力
 - **python-dateutil** (>=2.8.0): 日付処理
 - **pytest** (>=7.0.0): テスト
+
+### アルゴリズム
+- **Greedy Algorithm (貪欲法)**:
+  - 優先度スコアベースの候補者選定
+  - 制約充足チェック（Constraint Satisfaction）
+  - バックトラッキングなし（高速化のため簡略化）
 
 ---
 
@@ -35,25 +40,25 @@
 
 ```
 auto_arranger/
-├── main.py                      # エントリーポイント（未実装）
+├── main.py                      # エントリーポイント
 ├── config/
 │   ├── settings.yaml           # メンバー・制約設定
 │   └── ng_dates.yaml           # NG日設定
 ├── src/
 │   ├── data_loader.py          # CSVデータ読み込み・前処理
 │   ├── config_generator.py     # 設定ファイル自動生成
-│   ├── member_manager.py       # メンバー情報管理（未実装）
-│   ├── constraint_checker.py   # 制約条件チェック（未実装）
-│   ├── optimizer.py            # PuLP最適化エンジン（未実装）
-│   ├── schedule_generator.py   # スケジュール生成統括（未実装）
-│   └── output_formatter.py     # 結果出力・表示（未実装）
+│   ├── constraint_checker.py   # 制約条件チェック
+│   ├── schedule_builder.py     # スケジュール構築（Greedy）
+│   └── output_formatter.py     # 結果出力・表示
 ├── utils/
 │   ├── logger.py               # ログ設定
 │   └── date_utils.py           # 日付処理ユーティリティ
 ├── tests/
-│   ├── test_date_utils.py      # 日付ユーティリティテスト
-│   ├── test_data_loader.py     # データローダーテスト
-│   └── test_config_generator.py # 設定生成テスト
+│   ├── test_date_utils.py
+│   ├── test_data_loader.py
+│   ├── test_config_generator.py
+│   ├── test_constraint_checker.py
+│   └── test_schedule_builder.py
 ├── data/
 │   ├── duty_roster_2021_2025.csv  # 過去の当番データ
 │   └── output/                    # 生成結果出力先
@@ -72,203 +77,69 @@ auto_arranger/
 ### 全体ルール
 1. **ローテーション期間**: 21日～2ヶ月後の20日まで
 2. **重複禁止**: 日勤当番と夜勤当番が同じ日にかぶることはできない
-3. **夜勤後の日勤禁止**: 夜勤後の次の週には日勤当番を入れない
-4. **公平性**: 回数はなるべく公平を維持
+3. **夜勤後の日勤禁止**: 夜勤後の次の週には日勤当番を入れない（Min 7日）
+4. **公平性**: 担当回数と期間間隔に基づく優先度スコアで調整
 
 ### 日勤当番ルール
 1. **対象日**: 土日のみ
 2. **Index制約**:
-   - 直近2か月でindex 1または2に該当した人 → index 3には配置不可
-   - 直近2か月でindex 3に該当した人 → index 1,2には配置不可
-3. **ローテーション**: 同じ人の当番はできる限り期間をあける
+   - Index 1, 2グループ: 主にIndex 1, 2を担当
+   - Index 3グループ: 主にIndex 3を担当
+3. **間隔**: 同じ人の当番は最低14日間あける
 
 ### 夜勤ルール
 1. **期間**: 月曜から日曜までの7日間勤務
 2. **Index制約**:
-   - 夜勤index 1の人 → 夜勤index 2になることができない
-   - 夜勤index 2の人 → 夜勤index 1になることができない
-3. **メンバー**: 直近2か月で夜勤を担当している人をメンバーとする
-4. **ローテーション**: 同じ人の次の夜勤当番まではなるべく期間をあける
+   - Index 1グループ: Index 1のみ担当
+   - Index 2グループ: Index 2のみ担当
+3. **間隔**: 同じ人の当番は最低21日間あける
 
 ### 変動ルール
-1. **松田さん固定**: 夜勤2に隔週で入る
-2. **NG日**: 当番に入れない日を事前申請可能
+1. **松田さん固定**: 夜勤2に隔週で入る（基準日: 2025-02-20）
+2. **NG日**: `config/ng_dates.yaml` で指定（個別日付、期間、Global休日）
+3. **当番免除**: `config/settings.yaml` の `active: false` で設定
 
 ---
 
-## データ分析結果
+## 運用フロー
 
-### 過去データ（duty_roster_2021_2025.csv）
-- **期間**: 2021年10月21日～2025年2月20日
-- **総レコード数**: 3,501行（元データ）→ 3,319行（クリーニング後）
-- **重複除去**: 179行
-- **無効データ除去**: 3行（"-", "変更→", "person_name"）
-
-### アクティブメンバー（直近2ヶ月）
-- **総メンバー数**: 22名
-- **直近データ**: 142レコード
-
-### メンバー分類（過去2ヶ月の実績より自動判定）
-- **日勤 index 1,2グループ**: 16名
-- **日勤 index 3グループ**: 5名
-- **夜勤 index 1グループ**: 9名
-- **夜勤 index 2グループ**: 5名（松田さん含む）
-
-### 松田さんの特別設定
-- **出現回数**: 376回（全データの約10.7%）
-- **配置パターン**: 夜勤 index 2のみに固定
-- **パターン**: 隔週（biweekly）
-- **基準日**: 2025-02-20（過去データから自動検出）
-
----
-
-## 設定ファイル
-
-### config/settings.yaml
-メンバー情報、制約条件、松田さんの隔週パターンなどを管理。
-
-**初回起動時**: 過去2ヶ月のデータから自動生成される
-**2回目以降**: 既存のsettings.yamlを使用（手動編集可能）
-
-主要設定項目:
-- `members`: メンバー情報（日勤/夜勤、indexグループ別）
-- `matsuda_schedule`: 松田さんの隔週パターン
-- `constraints`: 制約条件（公平性、間隔、重複禁止等）
-- `historical_data`: 過去データ参照設定
-- `output`: 出力形式設定
-
-### config/ng_dates.yaml
-当番に入れない日の設定。
-
-設定方法:
-- `by_member`: メンバー別のNG日（日付リスト）
-- `global`: 全体NG日（祝日等）
-- `by_period`: 期間指定のNG日（休暇等）
-
----
-
-## 使用方法
-
-### 初回セットアップ
-```bash
-# 仮想環境作成（推奨）
-py -3.13 -m venv .venv
-.venv\Scripts\activate
-
-# ライブラリインストール
-py -3.13 -m pip install -r requirements.txt
-
-# 設定ファイル自動生成（初回のみ）
-py -3.13 test_config_gen.py
-```
-
-### 設定ファイル確認・編集
-1. `config/settings.yaml` を開いて内容を確認
-2. 必要に応じてメンバー情報やactive状態を編集
-3. `config/ng_dates.yaml` でNG日を設定
-
-### スケジュール生成（未実装）
-```bash
-# 例: 2025年3月21日～5月20日のスケジュール生成
-py -3.13 main.py --start 2025-03-21 --end 2025-05-20
-
-# デバッグモード
-py -3.13 main.py --start 2025-03-21 --end 2025-05-20 --debug
-```
-
----
-
-## テスト
-
-### テスト実行
-```bash
-# 全テスト実行
-py -3.13 -m pytest tests/ -v
-
-# 特定のテストのみ
-py -3.13 -m pytest tests/test_date_utils.py -v
-```
-
-### テストカバレッジ
-- **date_utils.py**: 7テスト（日付処理）
-- **data_loader.py**: 6テスト（データ読み込み・クリーニング）
-- **config_generator.py**: 5テスト（設定ファイル生成）
-- **合計**: 18テスト（全てパス）
+1. **設定調整**:
+   - `config/ng_dates.yaml` にNG日・期間を追記
+   - `config/settings.yaml` でメンバーの増減・免除を設定
+2. **スケジュール生成**:
+   ```bash
+   py -3.13 main.py --start 2025-03-21
+   ```
+3. **確認・修正**:
+   - 生成された `schedule.csv` (またはコンソール出力) を確認
+   - 必要に応じて手動調整
+4. **確定・履歴更新**:
+   - 確定したスケジュールを `data/duty_roster_2021_2025.csv` に追記
+   - 次回の生成時に過去データとして参照される
 
 ---
 
 ## 実装状況
 
 ### ✅ Phase 1: 基盤構築（完了）
-- [x] プロジェクト構造作成
-- [x] requirements.txt作成
-- [x] utils/logger.py実装
-- [x] utils/date_utils.py実装
-- [x] src/data_loader.py実装
+- プロジェクト構造、データローダー、ユーティリティ
 
 ### ✅ Phase 2: 設定管理（完了）
-- [x] src/config_generator.py実装
-- [x] config/settings.yaml自動生成
-- [x] config/ng_dates.yaml雛形生成
+- 設定ファイル自動生成、YAML管理
 
-### ✅ テスト（完了）
-- [x] tests/test_date_utils.py作成
-- [x] tests/test_data_loader.py作成
-- [x] tests/test_config_generator.py作成
-- [x] 全テスト実行・パス確認
+### ✅ Phase 3: コアロジック（完了）
+- `ConstraintChecker`: 8つの制約条件の実装
+- `ScheduleBuilder`: 優先度スコア計算、割当ロジック
+- エラーハンドリング: 候補者不在時の詳細レポート
 
-### 🚧 Phase 3以降（未実装）
-- [ ] src/member_manager.py実装
-- [ ] src/constraint_checker.py実装
-- [ ] src/optimizer.py実装（PuLP最適化エンジン）
-- [ ] src/schedule_generator.py実装
-- [ ] src/output_formatter.py実装
-- [ ] main.py実装（エントリーポイント）
+### ✅ Phase 4: インターフェース（完了）
+- `main.py`: CLI実装
+- `OutputFormatter`: テーブル表示、CSV出力、統計情報
 
 ---
 
-## 制約充足問題の定式化（予定）
+## 今後の課題
 
-### 変数定義
-- **日勤変数**: `x[d, m, i] ∈ {0, 1}` (日付、メンバー、index)
-- **夜勤変数**: `y[w, m, i] ∈ {0, 1}` (週、メンバー、index)
-
-### 目的関数
-```
-Minimize: 担当回数の最大値 - 担当回数の最小値
-（公平性を最大化）
-```
-
-### 主要制約条件
-1. 各日・各indexに1人のみ割り当て
-2. Index制約（過去2ヶ月の実績に基づく）
-3. 日勤・夜勤重複禁止
-4. 夜勤後7日間は日勤禁止
-5. NG日制約
-6. 松田さん隔週固定制約
-
----
-
-## コード品質管理
-
-### リファクタリング方針
-- **コード重複**: 発見次第排除
-- **モジュール化**: 単一責任の原則（SRP）
-- **ファイル行数**: 1ファイル1000行以内を推奨
-- **共通処理**: ユーティリティとして分離
-
-### デバッグ
-- **ログ出力**: 詳細なログでバグ原因特定
-- **デバッグモード**: 必要時に有効化、修正後は無効化
-
----
-
-## 関連ドキュメント
-- [AGENTS.md](AGENTS.md): 開発者情報
-- [update.md](update.md): 変更履歴
-- [README.md](../README.md): プロジェクト概要・使い方
-
----
-
-## 連絡先
-プロジェクトに関する質問や提案は、AGENTS.mdを参照してください。
+1. **最適化の高度化**: 現状のGreedy法では局所最適解になる可能性があるため、将来的には数理最適化（PuLP等）への移行も検討。
+2. **GUI/Web UI**: 一般ユーザー向けの操作画面。
+3. **自動履歴更新**: 生成結果を自動で履歴CSVにマージする機能。
