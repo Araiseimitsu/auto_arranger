@@ -104,6 +104,7 @@ class DutyRosterLoader:
     def analyze_member_history(self, df: pd.DataFrame) -> Dict:
         """
         メンバーの履歴を分析
+        夜勤は7日分で1回とカウントする（連続する夜勤は1セットとみなす）
 
         Args:
             df: DataFrame
@@ -117,14 +118,31 @@ class DutyRosterLoader:
         for member in df['person_name'].unique():
             member_data = df[df['person_name'] == member]
 
-            # 日勤・夜勤の回数とindex
+            # 日勤データ
             day_data = member_data[member_data['shift_category'] == 'Day']
+            
+            # 夜勤データ（週単位でユニークな開始日をカウント）
             night_data = member_data[member_data['shift_category'] == 'Night']
+            
+            # 夜勤回数の計算：連続する7日間は1回とみなす
+            # 週の開始日（月曜日）でグループ化してカウントするのが確実
+            # ここでは簡易的に、日付順にソートして、前の日付と7日以上空いていれば新しい回としてカウントする
+            night_count = 0
+            if not night_data.empty:
+                sorted_dates = sorted(night_data['date'].unique())
+                if sorted_dates:
+                    night_count = 1
+                    last_date = sorted_dates[0]
+                    for current_date in sorted_dates[1:]:
+                        # 2日以上空いていれば別の回とみなす（通常は7日連続なので、翌日は差が1日）
+                        if (current_date - last_date).days > 1:
+                             night_count += 1
+                        last_date = current_date
 
             stats[member] = {
-                'total_count': len(member_data),
+                'total_count': len(day_data) + night_count,
                 'day_count': len(day_data),
-                'night_count': len(night_data),
+                'night_count': night_count,
                 'day_indexes': sorted(day_data['shift_index'].unique().tolist()) if len(day_data) > 0 else [],
                 'night_indexes': sorted(night_data['shift_index'].unique().tolist()) if len(night_data) > 0 else [],
                 'last_date': member_data['date'].max().date(),

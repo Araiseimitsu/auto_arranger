@@ -1,6 +1,7 @@
 import yaml
 import shutil
 import sys
+import math
 from pathlib import Path
 from datetime import date
 from typing import Dict, Any, List, Tuple
@@ -8,6 +9,7 @@ from typing import Dict, Any, List, Tuple
 import pandas as pd
 from src.data_loader import load_and_process_data, DutyRosterLoader
 from src.schedule_builder import ScheduleBuilder
+from src.schedule_analyzer import ScheduleAnalyzer
 from src.output_formatter import OutputFormatter
 from utils.date_utils import get_rotation_period
 from utils.logger import setup_logger
@@ -65,8 +67,13 @@ def load_ng_dates() -> Dict[str, Any]:
         return {}
     with open(NG_DATES_PATH, 'r', encoding='utf-8') as f:
         data = yaml.safe_load(f)
-        # Ensure basic structure
         if not data: data = {}
+        
+        # Unwrap 'ng_dates' key if it exists (legacy/file format wrapper)
+        if 'ng_dates' in data:
+            data = data['ng_dates']
+        
+        # Ensure basic structure
         if 'global' not in data: data['global'] = []
         if 'by_member' not in data: data['by_member'] = {}
         if 'by_period' not in data: data['by_period'] = {}
@@ -78,8 +85,15 @@ def save_ng_dates(data: Dict[str, Any]) -> None:
     else:
         NG_DATES_PATH.parent.mkdir(parents=True, exist_ok=True)
     
+    # Wrap in 'ng_dates' key only if not already present
+    # (Since we unwrap in load, we usually need to wrap here)
+    if 'ng_dates' not in data:
+        output_data = {'ng_dates': data}
+    else:
+        output_data = data
+
     with open(NG_DATES_PATH, 'w', encoding='utf-8') as f:
-        yaml.safe_dump(data, f, allow_unicode=True, default_flow_style=False)
+        yaml.safe_dump(output_data, f, allow_unicode=True, default_flow_style=False)
 
 # --- NG Dates Helpers ---
 
@@ -162,9 +176,16 @@ def get_all_members() -> List[str]:
 
 # --- End Helpers ---
 
-def get_history_summary(limit: int = 50) -> List[Dict[str, Any]]:
+def get_history_summary(page: int = 1, page_size: int = 50) -> Dict[str, Any]:
     if not CSV_PATH.exists():
-        return []
+        return {
+            "data": [],
+            "total_count": 0,
+            "total_pages": 0,
+            "current_page": 1,
+            "has_next": False,
+            "has_prev": False
+        }
     
     try:
         df = pd.read_csv(CSV_PATH)
@@ -173,14 +194,37 @@ def get_history_summary(limit: int = 50) -> List[Dict[str, Any]]:
             df['date'] = pd.to_datetime(df['date'])
             df = df.sort_values('date', ascending=False)
         
-        # Take head
-        df_head = df.head(limit)
+        # Pagination
+        total_count = len(df)
+        total_pages = math.ceil(total_count / page_size)
+        
+        if page < 1: page = 1
+        if page > total_pages and total_pages > 0: page = total_pages
+        
+        # Slice data
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        df_page = df.iloc[start_idx:end_idx]
         
         # Convert to list of dicts for template
-        return df_head.to_dict('records')
+        return {
+            "data": df_page.to_dict('records'),
+            "total_count": total_count,
+            "total_pages": total_pages,
+            "current_page": page,
+            "has_next": page < total_pages,
+            "has_prev": page > 1
+        }
     except Exception as e:
         logger.error(f"Error reading history: {e}")
-        return []
+        return {
+            "data": [],
+            "total_count": 0,
+            "total_pages": 0,
+            "current_page": 1,
+            "has_next": False,
+            "has_prev": False
+        }
 
 def run_schedule_generation(start_date_str: str) -> Tuple[bool, Any, str]:
     """
@@ -222,10 +266,15 @@ def run_schedule_generation(start_date_str: str) -> Tuple[bool, Any, str]:
         formatter = OutputFormatter()
         statistics = formatter.generate_statistics(schedule, member_stats)
         
+        # Extended Analysis
+        analyzer = ScheduleAnalyzer(schedule, member_stats)
+        analysis_result = analyzer.analyze()
+        
         # Prepare result for UI
         result = {
             'schedule': schedule,
             'statistics': statistics,
+            'analysis': analysis_result,
             'start_date': start_date,
             'end_date': end_date
         }

@@ -4,8 +4,8 @@ from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from datetime import date
 import shutil
-
 import yaml
+
 from .services import (
     load_settings, save_settings,
     load_ng_dates, save_ng_dates,
@@ -26,7 +26,7 @@ templates = Jinja2Templates(directory="web/templates")
 async def dashboard(request: Request):
     settings = load_settings()
     ng_dates = load_ng_dates()
-    history = get_history_summary(limit=20)
+    history_data = get_history_summary(page=1, page_size=50)
     current_year = date.today().year
     all_members = get_all_members()
     
@@ -38,50 +38,69 @@ async def dashboard(request: Request):
         "settings": settings,
         "ng_dates": ng_dates,
         "ng_dates_yaml": ng_dates_yaml,
-        "history": history,
+        "history": history_data["data"],
+        "pagination": history_data,
         "current_year": current_year,
         "today": date.today().isoformat(),
         "all_members": all_members
     })
 
+@router.get("/history", response_class=HTMLResponse)
+async def get_history_table(request: Request, page: int = 1):
+    history_data = get_history_summary(page=page, page_size=50)
+    return templates.TemplateResponse("components/history_table.html", {
+        "request": request,
+        "history": history_data["data"],
+        "pagination": history_data
+    })
+
 @router.post("/settings/update", response_class=HTMLResponse)
 async def update_settings(request: Request):
     form_data = await request.form()
+    
+    # Reconstruct settings object from flat lists
+    new_settings = {"members": {"day_shift": {}, "night_shift": {}}}
+    
+    def process_group(form_list_key, active_suffix):
+        members = form_data.getlist(form_list_key)
+        group_list = []
+        for name in members:
+            # Check active status
+            # key format: active_{name}_{suffix}
+            active_key = f"active_{name}_{active_suffix}"
+            is_active = form_data.get(active_key) == "on"
+            group_list.append({
+                "name": name,
+                "active": is_active
+            })
+        return group_list
+
+    # Day Shift
+    new_settings["members"]["day_shift"]["index_1_2_group"] = process_group("day_index_1_2[]", "day")
+    new_settings["members"]["day_shift"]["index_3_group"] = process_group("day_index_3[]", "day")
+
+    # Night Shift
+    new_settings["members"]["night_shift"]["index_1_group"] = process_group("night_index_1[]", "night")
+    new_settings["members"]["night_shift"]["index_2_group"] = process_group("night_index_2[]", "night")
+    
+    # Check for Matsudas
     current_settings = load_settings()
     
+    # Merge only members part
+    if "members" in current_settings:
+        current_members = current_settings["members"]
+    else:
+        current_members = {}
+        
+    current_settings["members"] = new_settings["members"]
+    
     try:
-        updated_count = 0
-        
-        def update_members(group_list, prefix):
-            nonlocal updated_count
-            for member in group_list:
-                name = member['name']
-                form_key = f"active_{name}"
-                is_active = form_data.get(form_key) == 'on'
-                member['active'] = is_active
-                updated_count += 1
-
-        if 'members' in current_settings:
-            m = current_settings['members']
-            if 'day_shift' in m:
-                if 'index_1_2_group' in m['day_shift']:
-                    update_members(m['day_shift']['index_1_2_group'], 'day')
-                if 'index_3_group' in m['day_shift']:
-                    update_members(m['day_shift']['index_3_group'], 'day')
-            if 'night_shift' in m:
-                if 'index_1_group' in m['night_shift']:
-                    update_members(m['night_shift']['index_1_group'], 'night')
-                if 'index_2_group' in m['night_shift']:
-                    update_members(m['night_shift']['index_2_group'], 'night')
-
         save_settings(current_settings)
-        
         return templates.TemplateResponse("components/settings_form.html", {
             "request": request,
             "settings": current_settings,
             "success_message": "設定を保存しました"
         })
-
     except Exception as e:
         return HTMLResponse(f"<div class='error'>Error: {e}</div>", status_code=500)
 
@@ -189,6 +208,7 @@ async def generate_schedule(request: Request):
         "request": request,
         "schedule": result['schedule'],
         "statistics": result['statistics'],
+        "analysis": result['analysis'],
         "start_date": result['start_date'],
         "end_date": result['end_date']
     })
@@ -208,10 +228,11 @@ async def upload_csv(request: Request, file: UploadFile = File(...)):
         with open(CSV_PATH, 'wb') as f:
             f.write(content)
             
-        history = get_history_summary(limit=20)
+        history_data = get_history_summary(page=1, page_size=50)
         return templates.TemplateResponse("components/history_table.html", {
             "request": request,
-            "history": history,
+            "history": history_data["data"],
+            "pagination": history_data,
             "success_message": "データを更新しました"
         })
     except Exception as e:

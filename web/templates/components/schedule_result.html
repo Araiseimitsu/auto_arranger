@@ -1,86 +1,240 @@
-<div style="margin-top: 30px; animation: fadeIn 0.5s ease;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h3 style="margin: 0;">作成結果 ({{ start_date }} ～ {{ end_date }})</h3>
-        <form hx-post="/save_result" hx-target="#save-message">
-            <input type="hidden" name="start_date" value="{{ start_date }}">
-            <button type="submit" class="btn btn-primary">CSV保存</button>
-        </form>
-    </div>
-    <div id="save-message"></div>
+<div style="margin-top: 30px; animation: fadeIn 0.5s ease">
+  <div
+    style="
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    "
+  >
+    <h3 style="margin: 0">作成結果 ({{ start_date }} ～ {{ end_date }})</h3>
+    <form hx-post="/save_result" hx-target="#save-message">
+      <input type="hidden" name="start_date" value="{{ start_date }}" />
+      <button type="submit" class="btn btn-primary">CSV保存</button>
+    </form>
+  </div>
+  <div id="save-message"></div>
 
-    <!-- Statistics Summary -->
-    {% if statistics %}
-    <div class="card" style="background: #f0f4f8; border: none;">
-        <h4 style="margin-top: 0;">統計情報</h4>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-            <div>
-                <strong>公平性指標 (偏差比):</strong> 
-                {% set ratio = statistics.fairness.deviation_ratio %}
-                <span style="color: {% if ratio <= 0.3 %}green{% else %}red{% endif %}; font-weight: bold;">
-                    {{ "%.2f"|format(ratio) }}
-                </span>
-            </div>
-            <div>
-                <strong>平均担当回数:</strong> {{ "%.2f"|format(statistics.fairness.avg_count) }}回
-            </div>
-        </div>
+  <!-- Statistics Summary -->
+  {% if statistics and statistics.fairness %}
+  <div class="card" style="background: #f0f4f8; border: none">
+    <h4 style="margin-top: 0">統計情報</h4>
+    <div
+      style="
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+      "
+    >
+      <div>
+        <strong>公平性指標 (偏差比):</strong>
+        {% set ratio = statistics.fairness.deviation_ratio %}
+        <span
+          style="color: {% if ratio <= 0.3 %}green{% else %}red{% endif %}; font-weight: bold;"
+        >
+          {{ "%.2f"|format(ratio) }}
+        </span>
+      </div>
+      <div>
+        <strong>平均担当回数:</strong> {{
+        "%.2f"|format(statistics.fairness.avg_count) }}回
+      </div>
     </div>
-    {% endif %}
+  </div>
+  {% endif %}
 
-    <!-- Day Schedule -->
-    <h4>日勤スケジュール</h4>
-    {% if schedule.day %}
-    <div style="overflow-x: auto; margin-bottom: 30px; background: white; border-radius: 12px; box-shadow: var(--shadow-sm);">
-        <table>
-            <thead>
-                <tr>
-                    <th>日付</th>
-                    <th>Index 1</th>
-                    <th>Index 2</th>
-                    <th>Index 3</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for date_key, indexes in schedule.day.items()|sort %}
-                <tr>
-                    <td>{{ date_key }}</td>
-                    <td>{{ indexes.get(1, '-') }}</td>
-                    <td>{{ indexes.get(2, '-') }}</td>
-                    <td>{{ indexes.get(3, '-') }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+  <!-- Day Schedule -->
+  <h4>日勤スケジュール</h4>
+  {% if schedule.day %}
+  <div
+    style="
+      overflow-x: auto;
+      margin-bottom: 30px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: var(--shadow-sm);
+    "
+  >
+    <table>
+      <thead>
+        <tr>
+          <th>日付</th>
+          <th>当番1</th>
+          <th>当番2</th>
+          <th>当番3</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for date_key, indexes in schedule.day.items()|sort %}
+        <tr>
+          <td>{{ date_key }}</td>
+          <td>{{ indexes.get(1, '-') }}</td>
+          <td>{{ indexes.get(2, '-') }}</td>
+          <td>{{ indexes.get(3, '-') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p>日勤スケジュールなし</p>
+  {% endif %}
+
+  <!-- Night Schedule -->
+  <h4>夜勤スケジュール</h4>
+  {% if schedule.night %}
+  <div
+    style="
+      overflow-x: auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: var(--shadow-sm);
+    "
+  >
+    <table>
+      <thead>
+        <tr>
+          <th>週開始日</th>
+          <th>夜勤1</th>
+          <th>夜勤2</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for date_key, indexes in schedule.night.items()|sort %}
+        <tr>
+          <td>{{ date_key }}</td>
+          <td>{{ indexes.get(1, '-') }}</td>
+          <td>{{ indexes.get(2, '-') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p>夜勤スケジュールなし</p>
+  {% endif %}
+
+  <!-- Analysis Result -->
+  {% if analysis %}
+  <div style="margin-top: 40px; border-top: 2px solid #eee; padding-top: 20px">
+    <h3>詳細分析レポート</h3>
+
+    <!-- 1. Overlaps -->
+    {% if analysis.overlaps %}
+    <div
+      class="alert error"
+      style="
+        background: #fee;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-left: 5px solid red;
+      "
+    >
+      <h4 style="margin: 0 0 10px 0; color: #c00">⚠ 日勤・夜勤の重複警告</h4>
+      <ul style="margin: 0; padding-left: 20px">
+        {% for item in analysis.overlaps %}
+        <li>
+          <strong>{{ item.member }}</strong>: {{ item.details }}
+          で重複しています
+        </li>
+        {% endfor %}
+      </ul>
     </div>
     {% else %}
-    <p>日勤スケジュールなし</p>
+    <div
+      class="alert success"
+      style="
+        background: #f0fff4;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-left: 5px solid green;
+      "
+    >
+      <span style="color: green; font-weight: bold"
+        >✔ 日勤・夜勤の期間内重複はありません</span
+      >
+    </div>
     {% endif %}
 
-    <!-- Night Schedule -->
-    <h4>夜勤スケジュール</h4>
-    {% if schedule.night %}
-    <div style="overflow-x: auto; background: white; border-radius: 12px; box-shadow: var(--shadow-sm);">
-        <table>
-            <thead>
-                <tr>
-                    <th>週開始日</th>
-                    <th>Index 1</th>
-                    <th>Index 2</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for date_key, indexes in schedule.night.items()|sort %}
-                <tr>
-                    <td>{{ date_key }}</td>
-                    <td>{{ indexes.get(1, '-') }}</td>
-                    <td>{{ indexes.get(2, '-') }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- 2. Close Intervals -->
+    {% if analysis.close_intervals %}
+    <div
+      class="alert warning"
+      style="
+        background: #fff8e1;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-left: 5px solid orange;
+      "
+    >
+      <h4 style="margin: 0 0 10px 0; color: #f57f17">⚠ 近接シフト (7日以内)</h4>
+      <ul style="margin: 0; padding-left: 20px">
+        {% for item in analysis.close_intervals %}
+        <li>
+          <strong>{{ item.member }}</strong>: {{ item.from }} から {{ item.to }}
+          (間隔: {{ item.gap }}日)
+        </li>
+        {% endfor %}
+      </ul>
     </div>
     {% else %}
-    <p>夜勤スケジュールなし</p>
+    <div
+      class="alert success"
+      style="
+        background: #f0fff4;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-left: 5px solid green;
+      "
+    >
+      <span style="color: green; font-weight: bold"
+        >✔ 7日以内の連続・近接シフトはありません</span
+      >
+    </div>
     {% endif %}
+
+    <!-- 3. Member Counts -->
+    <h4>メンバー別割当数 (直近2ヶ月 + 今回)</h4>
+    <div
+      style="
+        overflow-x: auto;
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--shadow-sm);
+      "
+    >
+      <table>
+        <thead>
+          <tr>
+            <th rowspan="2">氏名</th>
+            <th colspan="2">日勤回数</th>
+            <th colspan="2">夜勤回数</th>
+          </tr>
+          <tr>
+            <th>今回</th>
+            <th>直近2ヶ月</th>
+            <th>今回</th>
+            <th>直近2ヶ月</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in analysis.member_counts %} {% if item.new_day > 0 or
+          item.new_night > 0 or item.past_day > 0 or item.past_night > 0 %}
+          <tr>
+            <td>{{ item.name }}</td>
+            <td><strong>{{ item.new_day }}</strong></td>
+            <td style="color: #666">{{ item.past_day }}</td>
+            <td><strong>{{ item.new_night }}</strong></td>
+            <td style="color: #666">{{ item.past_night }}</td>
+          </tr>
+          {% endif %} {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
 </div>
-
