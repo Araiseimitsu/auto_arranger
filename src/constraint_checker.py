@@ -312,11 +312,8 @@ class ConstraintChecker:
         """
         ng_dates = self.ng_dates_config.get('ng_dates', {})
 
-        # グローバルNG日
-        global_ng = ng_dates.get('global', [])
-        for ng_date_str in global_ng:
-            if target_date == date.fromisoformat(ng_date_str):
-                return False, f"{target_date}は全体NG日"
+        # グローバルNG日はスケジュール構築側で枠自体の有無として判定するため、
+        # ここでは個人のNGチェックのみ行います。
 
         # メンバー別NG日
         by_member = ng_dates.get('by_member', {})

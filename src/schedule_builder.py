@@ -134,7 +134,24 @@ class ScheduleBuilder:
         weekends = get_weekends_in_period(start_date, end_date)
         logger.info(f"日勤対象日数: {len(weekends)}日")
 
+        # Global NG日（会社休日）を取得
+        global_ng_dates = set()
+        ng_dates = self.ng_dates_config.get('ng_dates', {})
+        if ng_dates:
+            global_ng_list = ng_dates.get('global', [])
+            if global_ng_list:
+                for d_str in global_ng_list:
+                    try:
+                        global_ng_dates.add(date.fromisoformat(d_str))
+                    except ValueError:
+                        pass
+
         for weekend_date in weekends:
+            # 会社休日（Global NG）の場合はスキップ
+            if weekend_date in global_ng_dates:
+                logger.info(f"会社休日（Global NG）のため、{weekend_date}の日勤割り当てをスキップします")
+                continue
+
             schedule['day'][weekend_date] = {}
 
             # Index 1, 2, 3 を順番に割り当て
@@ -180,7 +197,31 @@ class ScheduleBuilder:
         mondays = get_mondays_in_period(start_date, end_date)
         logger.info(f"夜勤対象週数: {len(mondays)}週")
 
+        # Global NG日（会社休日）を取得
+        global_ng_dates = set()
+        ng_dates = self.ng_dates_config.get('ng_dates', {})
+        if ng_dates:
+            global_ng_list = ng_dates.get('global', [])
+            if global_ng_list:
+                for d_str in global_ng_list:
+                    try:
+                        global_ng_dates.add(date.fromisoformat(d_str))
+                    except ValueError:
+                        pass
+
         for monday in mondays:
+            # 週の平日（月～金）がすべてGlobal NGかチェック
+            is_full_holiday_week = True
+            for i in range(5):  # 0(Mon) to 4(Fri)
+                check_date = monday + timedelta(days=i)
+                if check_date not in global_ng_dates:
+                    is_full_holiday_week = False
+                    break
+            
+            if is_full_holiday_week:
+                logger.info(f"平日全休（Global NG）のため、{monday}週の夜勤割り当てをスキップします")
+                continue
+
             schedule['night'][monday] = {}
 
             # Index 1 を割り当て
