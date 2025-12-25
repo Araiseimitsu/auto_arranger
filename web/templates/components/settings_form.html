@@ -1,0 +1,38 @@
+<form hx-post="/settings/update" hx-target="#settings-form-container">
+    <div id="settings-form-container">
+        {% if success_message %}
+        <div style="background: #e8f5e9; color: #2e7d32; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+            {{ success_message }}
+        </div>
+        {% endif %}
+
+        {% macro render_member_group(group_list, title) %}
+            {% if group_list %}
+            <div style="margin-bottom: 20px;">
+                <h4 style="margin: 0 0 10px 0; font-size: 16px; color: #555;">{{ title }}</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">
+                    {% for member in group_list %}
+                    <label style="background: #f5f5f7; padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" name="active_{{ member.name }}" {% if member.active %}checked{% endif %} style="width: auto; margin-right: 8px;">
+                        <span>{{ member.name }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        {% endmacro %}
+
+        <h3 style="border-left: 4px solid #0071e3; padding-left: 10px; margin-top: 20px;">日勤メンバー</h3>
+        {{ render_member_group(settings.members.day_shift.index_1_2_group, 'Index 1 & 2') }}
+        {{ render_member_group(settings.members.day_shift.index_3_group, 'Index 3') }}
+
+        <h3 style="border-left: 4px solid #34c759; padding-left: 10px; margin-top: 20px;">夜勤メンバー</h3>
+        {{ render_member_group(settings.members.night_shift.index_1_group, 'Index 1') }}
+        {{ render_member_group(settings.members.night_shift.index_2_group, 'Index 2') }}
+
+        <div style="margin-top: 30px; text-align: right;">
+            <button type="submit" class="btn btn-primary">設定を保存</button>
+        </div>
+    </div>
+</form>
+

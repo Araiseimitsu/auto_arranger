@@ -1,0 +1,27 @@
+{% if history %}
+<div style="overflow-x: auto;">
+    <table>
+        <thead>
+            <tr>
+                <th>日付</th>
+                <th>シフト区分</th>
+                <th>Index</th>
+                <th>担当者</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in history %}
+            <tr>
+                <td>{{ row.date }}</td>
+                <td>{{ row.shift_category }}</td>
+                <td>{{ row.shift_index }}</td>
+                <td>{{ row.person_name }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p style="text-align: center; color: #999; padding: 40px;">履歴データがありません</p>
+{% endif %}
+

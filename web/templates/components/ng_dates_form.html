@@ -1,0 +1,216 @@
+<div id="ng-dates-container">
+    {% if success_message %}
+    <div style="background: #e8f5e9; color: #2e7d32; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+        {{ success_message }}
+    </div>
+    {% endif %}
+    {% if error_message %}
+    <div style="background: #ffebee; color: #c62828; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+        {{ error_message }}
+    </div>
+    {% endif %}
+
+    <!-- Sub-tabs for NG Dates -->
+    <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #e5e5e5; padding-bottom: 10px;">
+        <button class="btn-tab active" onclick="switchNgTab(this, 'ng-global')">全体NG (祝日等)</button>
+        <button class="btn-tab" onclick="switchNgTab(this, 'ng-member')">メンバーNG</button>
+        <button class="btn-tab" onclick="switchNgTab(this, 'ng-period')">期間NG</button>
+        <button class="btn-tab" onclick="switchNgTab(this, 'ng-advanced')">詳細編集 (YAML)</button>
+    </div>
+
+    <!-- Global NG Section -->
+    <div id="ng-global" class="ng-section">
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 250px;">
+                <h4>登録済み日付</h4>
+                <ul style="list-style: none; padding: 0; max-height: 300px; overflow-y: auto;">
+                    {% for date in ng_dates.global|sort %}
+                    <li style="padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                        <span>{{ date }}</span>
+                        <form hx-post="/ng_dates/global/remove" hx-target="#ng-dates-container" style="margin:0;">
+                            <input type="hidden" name="date" value="{{ date }}">
+                            <button type="submit" style="color: red; border: none; background: none; cursor: pointer;">✕</button>
+                        </form>
+                    </li>
+                    {% else %}
+                    <li style="color: #999;">登録なし</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div style="flex: 1; min-width: 250px; background: #f9f9fa; padding: 20px; border-radius: 12px;">
+                <h4>新規追加</h4>
+                <form hx-post="/ng_dates/global/add" hx-target="#ng-dates-container">
+                    <div class="form-group">
+                        <label>日付</label>
+                        <input type="date" name="date" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">追加</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Member NG Section -->
+    <div id="ng-member" class="ng-section hidden">
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 250px;">
+                <h4>メンバー別NG一覧</h4>
+                <div style="max-height: 400px; overflow-y: auto;">
+                    {% for member, dates in ng_dates.by_member.items() %}
+                        <div style="margin-bottom: 15px;">
+                            <strong style="display: block; background: #eee; padding: 5px 10px; border-radius: 5px;">{{ member }}</strong>
+                            <ul style="list-style: none; padding: 0; margin-top: 5px;">
+                                {% for date in dates|sort %}
+                                <li style="padding: 4px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0;">
+                                    <span>{{ date }}</span>
+                                    <form hx-post="/ng_dates/member/remove" hx-target="#ng-dates-container" style="margin:0;">
+                                        <input type="hidden" name="member" value="{{ member }}">
+                                        <input type="hidden" name="date" value="{{ date }}">
+                                        <button type="submit" style="color: red; border: none; background: none; cursor: pointer;">✕</button>
+                                    </form>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% else %}
+                    <p style="color: #999;">登録なし</p>
+                    {% endfor %}
+                </div>
+            </div>
+            <div style="flex: 1; min-width: 250px; background: #f9f9fa; padding: 20px; border-radius: 12px; height: fit-content;">
+                <h4>新規追加</h4>
+                <form hx-post="/ng_dates/member/add" hx-target="#ng-dates-container">
+                    <div class="form-group">
+                        <label>メンバー</label>
+                        <select name="member" required>
+                            <option value="">選択してください</option>
+                            {% for m in all_members %}
+                            <option value="{{ m }}">{{ m }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>日付</label>
+                        <input type="date" name="date" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">追加</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Period NG Section -->
+    <div id="ng-period" class="ng-section hidden">
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div style="flex: 2; min-width: 300px;">
+                <h4>期間NG設定</h4>
+                <table style="width: 100%; font-size: 14px;">
+                    <thead>
+                        <tr>
+                            <th>メンバー</th>
+                            <th>期間</th>
+                            <th>理由</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for member, periods in ng_dates.by_period.items() %}
+                            {% for p in periods %}
+                            <tr>
+                                <td>{{ member }}</td>
+                                <td>{{ p.start }} ～ {{ p.end }}</td>
+                                <td>{{ p.reason }}</td>
+                                <td>
+                                    <form hx-post="/ng_dates/period/remove" hx-target="#ng-dates-container" style="margin:0;">
+                                        <input type="hidden" name="member" value="{{ member }}">
+                                        <input type="hidden" name="start" value="{{ p.start }}">
+                                        <button type="submit" style="color: red; border: none; background: none; cursor: pointer;">削除</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                        <tr><td colspan="4" style="text-align: center; color: #999;">登録なし</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div style="flex: 1; min-width: 250px; background: #f9f9fa; padding: 20px; border-radius: 12px; height: fit-content;">
+                <h4>新規追加</h4>
+                <form hx-post="/ng_dates/period/add" hx-target="#ng-dates-container">
+                    <div class="form-group">
+                        <label>メンバー</label>
+                        <select name="member" required>
+                            <option value="">選択してください</option>
+                            {% for m in all_members %}
+                            <option value="{{ m }}">{{ m }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>開始日</label>
+                        <input type="date" name="start" required>
+                    </div>
+                    <div class="form-group">
+                        <label>終了日</label>
+                        <input type="date" name="end" required>
+                    </div>
+                    <div class="form-group">
+                        <label>理由</label>
+                        <input type="text" name="reason" placeholder="例: 夏期休暇">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">追加</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced (YAML) Section -->
+    <div id="ng-advanced" class="ng-section hidden">
+        <form hx-post="/ng_dates/update" hx-target="#ng-dates-container">
+            <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
+                YAML形式で直接編集します（上級者向け）。
+            </p>
+            <div class="form-group">
+                <textarea name="ng_dates_yaml" rows="15" style="font-family: monospace; font-size: 14px; background: #fafafa;">{{ ng_dates_yaml }}</textarea>
+            </div>
+            <div style="text-align: right;">
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function switchNgTab(btn, targetId) {
+            // Update buttons
+            const container = document.getElementById('ng-dates-container');
+            container.querySelectorAll('.btn-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Update sections
+            container.querySelectorAll('.ng-section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(targetId).classList.remove('hidden');
+        }
+    </script>
+    <style>
+        .btn-tab {
+            background: none;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .btn-tab.active {
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+            font-weight: 600;
+        }
+        .btn-sm {
+            padding: 6px 16px;
+            font-size: 14px;
+        }
+    </style>
+</div>
