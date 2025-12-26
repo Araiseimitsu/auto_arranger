@@ -113,6 +113,15 @@ class ConfigGenerator:
                 },
                 'night_to_day_gap': {
                     'min_days': 7
+                },
+                'soft_constraints': {
+                    'day_to_night_gap': {
+                        'enabled': True,
+                        'days_threshold_strong': 3,
+                        'days_threshold_weak': 7,
+                        'penalty_strong': 0.3,
+                        'penalty_weak': 0.15
+                    }
                 }
             },
             'historical_data': {

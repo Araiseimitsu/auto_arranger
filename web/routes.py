@@ -143,7 +143,7 @@ async def update_settings(request: Request):
         min_gap = form_data.get("min_gap_night_day")
         if min_gap is not None:
             current_settings["constraints"]["night_to_day_gap"]["min_days"] = int(min_gap)
-            
+
     except ValueError:
         pass # Ignore invalid ints
         

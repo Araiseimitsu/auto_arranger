@@ -342,6 +342,7 @@ class ScheduleBuilder:
         1. 現在スケジュールでの担当回数の少なさ（重み: 0.5）
         2. 最終担当からの経過日数（重み: 0.3）
         3. 過去の担当頻度の低さ（重み: 0.2）
+        4. ソフト制約ペナルティ（日勤直後の夜勤を避ける）
 
         Args:
             member: メンバー名
@@ -372,6 +373,11 @@ class ScheduleBuilder:
             score += (1.0 / (past_count + 1)) * 0.2
         else:
             score += 1.0 * 0.2
+
+        # 4. ソフト制約：日勤直後の夜勤を避ける
+        if shift_type == 'night':
+            penalty = self._calculate_day_to_night_penalty(member, target_date, current_schedule)
+            score -= penalty
 
         return score
 
@@ -435,6 +441,58 @@ class ScheduleBuilder:
             last_date = self.member_stats[member].get('last_date')
 
         return last_date
+
+    def _calculate_day_to_night_penalty(
+        self,
+        member: str,
+        night_week_start: date,
+        current_schedule: Dict
+    ) -> float:
+        """
+        日勤直後の夜勤に対するペナルティを計算
+
+        Args:
+            member: メンバー名
+            night_week_start: 夜勤週の開始日（月曜日）
+            current_schedule: 現在のスケジュール
+
+        Returns:
+            ペナルティ値（0.0～penalty_strong）
+        """
+        # ソフト制約が無効の場合はペナルティなし
+        soft_constraints = self.settings.get('constraints', {}).get('soft_constraints', {})
+        day_to_night_config = soft_constraints.get('day_to_night_gap', {})
+
+        if not day_to_night_config.get('enabled', False):
+            return 0.0
+
+        # 設定値を取得
+        days_threshold_strong = day_to_night_config.get('days_threshold_strong', 3)
+        days_threshold_weak = day_to_night_config.get('days_threshold_weak', 7)
+        penalty_strong = day_to_night_config.get('penalty_strong', 0.3)
+        penalty_weak = day_to_night_config.get('penalty_weak', 0.15)
+
+        # 日勤スケジュールを取得
+        day_schedule = current_schedule.get('day', {})
+
+        penalty = 0.0
+
+        # 夜勤週の前後を確認（前週の日勤が影響する可能性がある）
+        for day_date, day_indexes in day_schedule.items():
+            for idx, assigned_member in day_indexes.items():
+                if assigned_member == member:
+                    # 日勤日から夜勤開始日までの日数を計算
+                    days_between = (night_week_start - day_date).days
+
+                    # 日数に応じてペナルティを設定
+                    if 0 < days_between <= days_threshold_strong:
+                        # 強いペナルティ（3日以内など）
+                        penalty = max(penalty, penalty_strong)
+                    elif days_between <= days_threshold_weak:
+                        # 弱いペナルティ（4～7日など）
+                        penalty = max(penalty, penalty_weak)
+
+        return penalty
 
     def _raise_no_candidate_error(
         self,

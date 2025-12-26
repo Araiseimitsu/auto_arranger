@@ -401,3 +401,139 @@ def test_build_schedule_2_weeks(builder):
                     for day_idx, day_member in day_indexes.items():
                         assert night_member != day_member, \
                             f"{night_member}が{week_start}～{week_end}の夜勤と{day_date}の日勤で重複"
+
+
+# =============================================================================
+# ソフト制約テスト（日勤直後の夜勤を避ける）
+# =============================================================================
+
+def test_day_to_night_penalty_disabled(builder):
+    """ソフト制約が無効の場合、ペナルティは0"""
+    # ソフト制約を無効化
+    builder.settings['constraints']['soft_constraints'] = {
+        'day_to_night_gap': {'enabled': False}
+    }
+
+    current_schedule = {
+        'day': {
+            date(2025, 3, 22): {1: '丸岡', 2: '今井', 3: '大関'}
+        },
+        'night': {}
+    }
+
+    # 3/24（月）開始の夜勤（3/22の日勤から2日後）
+    night_week_start = date(2025, 3, 24)
+    penalty = builder._calculate_day_to_night_penalty('丸岡', night_week_start, current_schedule)
+
+    assert penalty == 0.0
+
+
+def test_day_to_night_penalty_strong(builder):
+    """日勤から3日以内の夜勤は強いペナルティ"""
+    # ソフト制約を有効化
+    builder.settings['constraints']['soft_constraints'] = {
+        'day_to_night_gap': {
+            'enabled': True,
+            'days_threshold_strong': 3,
+            'days_threshold_weak': 7,
+            'penalty_strong': 0.3,
+            'penalty_weak': 0.15
+        }
+    }
+
+    current_schedule = {
+        'day': {
+            date(2025, 3, 22): {1: '丸岡', 2: '今井', 3: '大関'}
+        },
+        'night': {}
+    }
+
+    # 3/24（月）開始の夜勤（3/22の土曜日勤から2日後）
+    night_week_start = date(2025, 3, 24)
+    penalty = builder._calculate_day_to_night_penalty('丸岡', night_week_start, current_schedule)
+
+    assert penalty == 0.3  # 強いペナルティ
+
+
+def test_day_to_night_penalty_weak(builder):
+    """日勤から4～7日以内の夜勤は弱いペナルティ"""
+    builder.settings['constraints']['soft_constraints'] = {
+        'day_to_night_gap': {
+            'enabled': True,
+            'days_threshold_strong': 3,
+            'days_threshold_weak': 7,
+            'penalty_strong': 0.3,
+            'penalty_weak': 0.15
+        }
+    }
+
+    current_schedule = {
+        'day': {
+            date(2025, 3, 15): {1: '丸岡', 2: '今井', 3: '大関'}  # 土曜
+        },
+        'night': {}
+    }
+
+    # 3/17（月）開始の夜勤（3/15の土曜日勤から5日後）
+    night_week_start = date(2025, 3, 20)
+    penalty = builder._calculate_day_to_night_penalty('丸岡', night_week_start, current_schedule)
+
+    assert penalty == 0.15  # 弱いペナルティ
+
+
+def test_day_to_night_penalty_none(builder):
+    """日勤から8日以上離れた夜勤はペナルティなし"""
+    builder.settings['constraints']['soft_constraints'] = {
+        'day_to_night_gap': {
+            'enabled': True,
+            'days_threshold_strong': 3,
+            'days_threshold_weak': 7,
+            'penalty_strong': 0.3,
+            'penalty_weak': 0.15
+        }
+    }
+
+    current_schedule = {
+        'day': {
+            date(2025, 3, 1): {1: '丸岡', 2: '今井', 3: '大関'}  # 土曜
+        },
+        'night': {}
+    }
+
+    # 3/17（月）開始の夜勤（3/1の土曜日勤から16日後）
+    night_week_start = date(2025, 3, 17)
+    penalty = builder._calculate_day_to_night_penalty('丸岡', night_week_start, current_schedule)
+
+    assert penalty == 0.0  # ペナルティなし
+
+
+def test_priority_score_with_soft_constraint(builder):
+    """優先度スコア計算にソフト制約が反映される"""
+    builder.settings['constraints']['soft_constraints'] = {
+        'day_to_night_gap': {
+            'enabled': True,
+            'days_threshold_strong': 3,
+            'days_threshold_weak': 7,
+            'penalty_strong': 0.3,
+            'penalty_weak': 0.15
+        }
+    }
+
+    current_schedule = {
+        'day': {
+            date(2025, 3, 22): {1: '丸岡', 2: '今井', 3: '大関'}
+        },
+        'night': {}
+    }
+
+    # 3/24（月）開始の夜勤
+    night_week_start = date(2025, 3, 24)
+
+    # 丸岡：3/22に日勤あり → ペナルティあり
+    score_maruoka = builder._calculate_priority_score('丸岡', 'night', current_schedule, night_week_start)
+
+    # 宮本：日勤なし → ペナルティなし
+    score_miyamoto = builder._calculate_priority_score('宮本', 'night', current_schedule, night_week_start)
+
+    # 日勤直後の丸岡のスコアが低くなる
+    assert score_maruoka < score_miyamoto

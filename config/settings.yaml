@@ -12,6 +12,13 @@ constraints:
   rotation_period:
     duration_months: 2
     start_day: 21
+  soft_constraints:
+    day_to_night_gap:
+      days_threshold_strong: 1
+      days_threshold_weak: 1
+      enabled: true
+      penalty_strong: 0.9
+      penalty_weak: 0.74
 historical_data:
   csv_path: data/duty_roster_2021_2025.csv
   lookback_months: 2
@@ -61,6 +68,8 @@ members:
     - active: true
       name: 小林直
     - active: true
+      min_days_day: 7
+      min_days_night: 7
       name: 塩田
   night_shift:
     index_1_group:
