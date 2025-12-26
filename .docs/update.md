@@ -4,6 +4,27 @@
 
 ---
 
+## 2025-12-26: バリアント出力機能の追加
+
+### 追加機能
+- **複数バージョン生成**: `--variants` で同一設定から複数の当番表を生成・表示可能に。
+- **上位候補からの分岐**: `--variant-top-k` により、各枠の上位k候補からバリアントごとに安定的に選択。
+- **CSV出力の自動分割**: バリアント数が複数の場合、`_v1` などのサフィックス付きで出力。
+
+### 変更ファイル
+- `src/schedule_builder.py`: バリアント選択ロジック追加
+- `main.py`: CLI引数追加と複数出力対応
+- `README.md`: 使用例の追加
+- `web/services.py`: バリアント生成API対応
+- `web/routes.py`: UI生成・保存のバリアント対応
+- `web/templates/components/schedule_result.html`: バリアント切替UI
+- `web/templates/components/schedule_variant.html`: バージョン別表示
+- `web/templates/index.html`: 生成オプション追加
+- `web/static/js/app.js`: バリアント切替ロジック
+- `web/static/css/style.css`: バリアントUIスタイル
+
+---
+
 ## 2025-12-25: システム完成・運用フロー確立
 
 ### 実装完了
@@ -146,4 +167,3 @@
 - **検出方法**: 過去データの最終出現日から計算
 - **設定**: 夜勤 index 2固定、隔週パターン
 - **根拠**: 過去データで376回出現、すべて夜勤 index 2
-

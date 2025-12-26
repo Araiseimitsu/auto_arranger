@@ -257,6 +257,8 @@ async def remove_period_ng_route(request: Request):
 async def generate_schedule(request: Request):
     form_data = await request.form()
     start_date_str = form_data.get('start_date')
+    variants = form_data.get('variants')
+    variant_top_k = form_data.get('variant_top_k')
     
     if not start_date_str:
         return HTMLResponse("<div class='error'>開始日を指定してください</div>")
@@ -268,18 +270,29 @@ async def generate_schedule(request: Request):
     except ValueError:
         return HTMLResponse("<div class='error'>無効な日付形式です</div>")
 
-    success, result, message = run_schedule_generation(start_date_str)
+    try:
+        variants_int = int(variants) if variants is not None else 1
+        variant_top_k_int = int(variant_top_k) if variant_top_k is not None else 3
+    except ValueError:
+        return HTMLResponse("<div class='error'>バリアント設定が無効です</div>")
+
+    success, result, message = run_schedule_generation(
+        start_date_str,
+        variants=variants_int,
+        variant_top_k=variant_top_k_int
+    )
     
     if not success:
         return HTMLResponse(f"<div class='error'>{message}</div>")
     
     return templates.TemplateResponse("components/schedule_result.html", {
         "request": request,
-        "schedule": result['schedule'],
-        "statistics": result['statistics'],
-        "analysis": result['analysis'],
+        "variants": result['variants'],
+        "failures": result['failures'],
         "start_date": result['start_date'],
-        "end_date": result['end_date']
+        "end_date": result['end_date'],
+        "variant_count": result['variant_count'],
+        "variant_top_k": result['variant_top_k']
     })
 
 @router.post("/upload_csv", response_class=HTMLResponse)
@@ -311,14 +324,35 @@ async def upload_csv(request: Request, file: UploadFile = File(...)):
 async def save_result(request: Request):
     form_data = await request.form()
     start_date = form_data.get('start_date')
+    variant_index = form_data.get('variant_index')
+    variants = form_data.get('variants')
+    variant_top_k = form_data.get('variant_top_k')
     
     if not start_date:
         return HTMLResponse("Error: Missing start date")
         
-    success, result, message = run_schedule_generation(start_date)
+    try:
+        variants_int = int(variants) if variants is not None else 1
+        variant_top_k_int = int(variant_top_k) if variant_top_k is not None else 3
+        variant_index_int = int(variant_index) if variant_index is not None else 0
+    except ValueError:
+        return HTMLResponse("<div class='error'>バリアント設定が無効です</div>")
+
+    success, result, message = run_schedule_generation(
+        start_date,
+        variants=variants_int,
+        variant_top_k=variant_top_k_int
+    )
     
     if success:
-        path = save_generated_schedule(result['schedule'])
+        selected = None
+        for item in result['variants']:
+            if item['variant_index'] == variant_index_int:
+                selected = item
+                break
+        if selected is None:
+            return HTMLResponse("<div class='error'>選択されたバージョンが見つかりません</div>")
+        path = save_generated_schedule(selected['schedule'])
         return HTMLResponse(f"<div class='success'>CSVを保存しました: {path}</div>")
     else:
         return HTMLResponse(f"<div class='error'>保存失敗: {message}</div>")

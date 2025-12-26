@@ -38,6 +38,28 @@
         </p>
       </div>
 
+      <div class="form-group">
+        <label for="variants">提案するバージョン数</label>
+        <select id="variants" name="variants">
+          <option value="1">1件</option>
+          <option value="3" selected>3件</option>
+          <option value="5">5件</option>
+        </select>
+        <p class="form-hint">同一条件でも複数案を提示できます。</p>
+      </div>
+
+      <div class="form-group">
+        <label for="variant_top_k">分岐幅（上位候補から選択）</label>
+        <select id="variant_top_k" name="variant_top_k">
+          <option value="1">1（同一結果）</option>
+          <option value="2">2</option>
+          <option value="3" selected>3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+        <p class="form-hint">値を大きくするほど差分が出やすくなります。</p>
+      </div>
+
       <button type="submit" class="btn btn-primary" id="generate-btn">
         作成開始
       </button>

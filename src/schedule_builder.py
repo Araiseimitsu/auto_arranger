@@ -5,6 +5,7 @@
 優先度スコアに基づいて最適な候補者を選定します。
 """
 
+import hashlib
 import yaml
 from datetime import date, timedelta
 from typing import Dict, List, Tuple, Any, Optional
@@ -26,7 +27,9 @@ class ScheduleBuilder:
         settings_path: str,
         ng_dates_path: str,
         member_stats: Dict,
-        recent_df=None
+        recent_df=None,
+        variant_index: int = 0,
+        variant_top_k: int = 1
     ):
         """
         初期化
@@ -46,6 +49,8 @@ class ScheduleBuilder:
 
         self.member_stats = member_stats
         self.recent_df = recent_df
+        self.variant_index = max(0, int(variant_index))
+        self.variant_top_k = max(1, int(variant_top_k))
 
         # 制約チェッカー初期化
         self.checker = ConstraintChecker(self.settings, self.ng_dates_config)
@@ -85,6 +90,10 @@ class ScheduleBuilder:
         logger.info(f"日勤 index 3: {len(self.day_index_3_group)}名")
         logger.info(f"夜勤 index 1: {len(self.night_index_1_group)}名")
         logger.info(f"夜勤 index 2: {len(self.night_index_2_group)}名")
+        if self.variant_index > 0 and self.variant_top_k > 1:
+            logger.info(
+                f"バリアント設定: index={self.variant_index}, top_k={self.variant_top_k}"
+            )
 
     def build_schedule(
         self,
@@ -322,11 +331,35 @@ class ScheduleBuilder:
         if not valid_candidates:
             return None
 
-        # スコアが最も高い候補を選択
+        # スコアが最も高い候補を選択（バリアント指定時は上位k内で決定）
         valid_candidates.sort(key=lambda x: x[1], reverse=True)
-        selected = valid_candidates[0][0]
+        if self.variant_index == 0 or self.variant_top_k <= 1:
+            return valid_candidates[0][0]
 
-        return selected
+        k = min(self.variant_top_k, len(valid_candidates))
+        pick_index = self._variant_pick_index(target_date, shift_type, index, k)
+        return valid_candidates[pick_index][0]
+
+    def _variant_pick_index(
+        self,
+        target_date: date,
+        shift_type: str,
+        index: int,
+        k: int
+    ) -> int:
+        """
+        バリアント用の候補選択インデックスを決定
+
+        同一設定で同じバリアント番号なら必ず同じ結果になるよう、
+        安定ハッシュから決定します。
+        """
+        if self.variant_index <= 0 or k <= 1:
+            return 0
+
+        token = f"{target_date.isoformat()}|{shift_type}|{index}|{self.variant_index}"
+        digest = hashlib.md5(token.encode('utf-8')).hexdigest()
+        value = int(digest, 16)
+        return value % k
 
     def _calculate_priority_score(
         self,

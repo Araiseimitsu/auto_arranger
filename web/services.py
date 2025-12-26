@@ -226,7 +226,11 @@ def get_history_summary(page: int = 1, page_size: int = 50) -> Dict[str, Any]:
             "has_prev": False
         }
 
-def run_schedule_generation(start_date_str: str) -> Tuple[bool, Any, str]:
+def run_schedule_generation(
+    start_date_str: str,
+    variants: int = 1,
+    variant_top_k: int = 3
+) -> Tuple[bool, Any, str]:
     """
     Returns (success, result_data, message)
     """
@@ -252,33 +256,54 @@ def run_schedule_generation(start_date_str: str) -> Tuple[bool, Any, str]:
             lookback_months=2
         )
 
-        # Build
-        builder = ScheduleBuilder(
-            str(SETTINGS_PATH),
-            str(NG_DATES_PATH),
-            member_stats,
-            df_recent
-        )
-        
-        schedule = builder.build_schedule(start_date, end_date)
-        
-        # Stats
+        variant_count = max(1, int(variants))
+        variant_top_k = max(1, int(variant_top_k))
+
         formatter = OutputFormatter()
-        statistics = formatter.generate_statistics(schedule, member_stats)
-        
-        # Extended Analysis
-        analyzer = ScheduleAnalyzer(schedule, member_stats)
-        analysis_result = analyzer.analyze()
-        
-        # Prepare result for UI
+        variant_results = []
+        failures = []
+
+        for variant_index in range(variant_count):
+            builder = ScheduleBuilder(
+                str(SETTINGS_PATH),
+                str(NG_DATES_PATH),
+                member_stats,
+                df_recent,
+                variant_index=variant_index,
+                variant_top_k=variant_top_k
+            )
+
+            try:
+                schedule = builder.build_schedule(start_date, end_date)
+
+                statistics = formatter.generate_statistics(schedule, member_stats)
+                analyzer = ScheduleAnalyzer(schedule, member_stats)
+                analysis_result = analyzer.analyze()
+
+                variant_results.append({
+                    'variant_index': variant_index,
+                    'schedule': schedule,
+                    'statistics': statistics,
+                    'analysis': analysis_result
+                })
+            except ValueError as e:
+                failures.append({
+                    'variant_index': variant_index,
+                    'message': str(e)
+                })
+
+        if not variant_results:
+            return False, None, "すべてのバージョンでスケジュール生成に失敗しました"
+
         result = {
-            'schedule': schedule,
-            'statistics': statistics,
-            'analysis': analysis_result,
+            'variants': variant_results,
+            'failures': failures,
             'start_date': start_date,
-            'end_date': end_date
+            'end_date': end_date,
+            'variant_count': variant_count,
+            'variant_top_k': variant_top_k
         }
-        
+
         return True, result, "Schedule generated successfully"
         
     except ValueError as e:

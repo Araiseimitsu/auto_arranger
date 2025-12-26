@@ -70,6 +70,9 @@ py -3.13 main.py --start 2025-03-21
 
 # CSV出力する場合
 py -3.13 main.py --start 2025-03-21 --output schedule.csv
+
+# 同一設定で3バージョン出力する場合（上位3候補から選択）
+py -3.13 main.py --start 2025-03-21 --variants 3 --variant-top-k 3
 ```
 
 ---

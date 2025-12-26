@@ -111,6 +111,7 @@ body {
     border: 1px solid rgba(0,0,0,0.05);
     color: var(--accent-color);
     transition: all var(--transition-fast);
+    cursor: pointer;
 }
 
 .help-button:hover {
@@ -776,6 +777,10 @@ tr:hover td {
     margin-bottom: 24px;
 }
 
+.stats-title {
+    margin-top: 0;
+}
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -826,4 +831,105 @@ tr:hover td {
 .alert-list {
     margin: 0;
     padding-left: 20px;
+}
+
+.text-secondary {
+    color: var(--text-secondary);
+}
+
+/* Variant Tabs */
+.result-wrapper {
+    margin-top: 30px;
+}
+
+.variant-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.variant-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.variant-title-main {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.variant-sub {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.variant-tabs {
+    display: inline-flex;
+    gap: 8px;
+    background: rgba(118, 118, 128, 0.12);
+    padding: 4px;
+    border-radius: 999px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.variant-tab {
+    border: none;
+    background: transparent;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.variant-tab:hover {
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.6);
+}
+
+.variant-tab.active {
+    background: white;
+    color: var(--text-primary);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.variant-panels {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.variant-panel {
+    display: none;
+}
+
+.variant-panel.active {
+    display: block;
+}
+
+.variant-header {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 20px;
+}
+
+.analysis-section {
+    margin-top: 40px;
+    border-top: 2px solid #eee;
+    padding-top: 20px;
+}
+
+.alert-inline {
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }

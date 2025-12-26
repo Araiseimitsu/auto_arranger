@@ -50,6 +50,18 @@ def main():
         type=str,
         help='CSV出力ファイルパス（オプション）'
     )
+    parser.add_argument(
+        '--variants',
+        type=int,
+        default=1,
+        help='同一条件で別バージョンを生成する数（デフォルト: 1）'
+    )
+    parser.add_argument(
+        '--variant-top-k',
+        type=int,
+        default=3,
+        help='各枠で上位k候補から選ぶ幅（バリアント用、デフォルト: 3）'
+    )
 
     args = parser.parse_args()
 
@@ -92,22 +104,36 @@ def main():
 
         # スケジュール構築
         logger.info("スケジュール構築中...")
-        builder = ScheduleBuilder(
-            settings_path,
-            ng_dates_path,
-            member_stats,
-            df_recent
-        )
+        formatter = OutputFormatter()
+        variant_count = max(1, int(args.variants))
+        variant_top_k = max(1, int(args.variant_top_k))
+        schedules = []
+        failures = []
 
-        schedule = builder.build_schedule(start_date, end_date)
+        for variant_index in range(variant_count):
+            builder = ScheduleBuilder(
+                settings_path,
+                ng_dates_path,
+                member_stats,
+                df_recent,
+                variant_index=variant_index,
+                variant_top_k=variant_top_k
+            )
+            try:
+                schedule = builder.build_schedule(start_date, end_date)
+                schedules.append((variant_index, schedule))
+            except ValueError as e:
+                failures.append((variant_index, str(e)))
+                if variant_count == 1:
+                    raise
+
+        if not schedules:
+            logger.error("すべてのバリアントでスケジュール生成に失敗しました")
+            for variant_index, message in failures:
+                logger.error(f"バージョン{variant_index + 1}失敗: {message}")
+            sys.exit(1)
 
         logger.info("スケジュール構築完了")
-
-        # 出力
-        formatter = OutputFormatter()
-
-        # 統計情報生成
-        statistics = formatter.generate_statistics(schedule, member_stats)
 
         # 標準出力に表示
         print(f"\n{'='*80}")
@@ -115,12 +141,26 @@ def main():
         print(f"期間: {start_date} ～ {end_date}")
         print(f"{'='*80}")
 
-        formatter.print_schedule(schedule, start_date, end_date, statistics)
+        for variant_index, schedule in schedules:
+            statistics = formatter.generate_statistics(schedule, member_stats)
+            if variant_count > 1:
+                print(f"\n--- バージョン{variant_index + 1}/{variant_count} ---")
+            formatter.print_schedule(schedule, start_date, end_date, statistics)
 
-        # CSV出力（オプション）
-        if args.output:
-            formatter.save_to_csv(schedule, args.output)
-            logger.info(f"スケジュールをCSVに保存: {args.output}")
+            # CSV出力（オプション）
+            if args.output:
+                output_path = args.output
+                if variant_count > 1:
+                    path = Path(args.output)
+                    suffix = path.suffix if path.suffix else ".csv"
+                    stem = path.stem if path.stem else "schedule"
+                    output_path = str(path.with_name(f"{stem}_v{variant_index + 1}{suffix}"))
+                formatter.save_to_csv(schedule, output_path)
+                logger.info(f"スケジュールをCSVに保存: {output_path}")
+
+        if failures:
+            for variant_index, message in failures:
+                logger.warning(f"バージョン{variant_index + 1}は生成失敗: {message}")
 
         logger.info("処理が正常に完了しました")
         sys.exit(0)

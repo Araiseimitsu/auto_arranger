@@ -91,6 +91,33 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// Variant tab switching (event delegation for HTMX swaps)
+document.addEventListener('click', (event) => {
+    const tab = event.target.closest('.variant-tab');
+    if (!tab) return;
+
+    const wrapper = tab.closest('.result-wrapper');
+    if (!wrapper) return;
+
+    const targetId = tab.getAttribute('data-variant-tab');
+    if (targetId === null) return;
+
+    const tabs = wrapper.querySelectorAll('.variant-tab');
+    const panels = wrapper.querySelectorAll('.variant-panel');
+
+    tabs.forEach((item) => item.classList.remove('active'));
+    tab.classList.add('active');
+
+    panels.forEach((panel) => {
+        const panelId = panel.getAttribute('data-variant-panel');
+        if (panelId === targetId) {
+            panel.classList.add('active');
+        } else {
+            panel.classList.remove('active');
+        }
+    });
+});
+
 // Member modal management
 let currentMemberName = "";
 
