@@ -51,6 +51,8 @@ class ScheduleBuilder:
         self.recent_df = recent_df
         self.variant_index = max(0, int(variant_index))
         self.variant_top_k = max(1, int(variant_top_k))
+        self.baseline_past_counts = self._calculate_baseline_past_counts()
+        self.baseline_last_date = self._calculate_baseline_last_date()
 
         # 制約チェッカー初期化
         self.checker = ConstraintChecker(self.settings, self.ng_dates_config)
@@ -94,6 +96,51 @@ class ScheduleBuilder:
             logger.info(
                 f"バリアント設定: index={self.variant_index}, top_k={self.variant_top_k}"
             )
+
+    def _calculate_baseline_past_counts(self) -> Dict[str, float]:
+        """
+        新規メンバー用の基準回数（平均）を算出
+
+        Returns:
+            {'day': 平均日勤回数, 'night': 平均夜勤回数}
+        """
+        if not self.member_stats:
+            return {'day': 0.0, 'night': 0.0}
+
+        day_counts = []
+        night_counts = []
+        for stats in self.member_stats.values():
+            day_counts.append(stats.get('day_count', 0))
+            night_counts.append(stats.get('night_count', 0))
+
+        day_avg = sum(day_counts) / len(day_counts) if day_counts else 0.0
+        night_avg = sum(night_counts) / len(night_counts) if night_counts else 0.0
+        return {'day': day_avg, 'night': night_avg}
+
+    def _calculate_baseline_last_date(self) -> Optional[date]:
+        """
+        新規メンバー用の基準最終担当日を算出
+
+        Returns:
+            直近データの最新日（取得できない場合はNone）
+        """
+        if self.recent_df is not None and not self.recent_df.empty:
+            try:
+                return self.recent_df['date'].max().date()
+            except Exception:
+                pass
+
+        if self.member_stats:
+            try:
+                return max(
+                    stats.get('last_date')
+                    for stats in self.member_stats.values()
+                    if stats.get('last_date') is not None
+                )
+            except ValueError:
+                pass
+
+        return None
 
     def build_schedule(
         self,
@@ -405,7 +452,8 @@ class ScheduleBuilder:
             past_count = self.member_stats[member].get(f'{shift_type}_count', 0)
             score += (1.0 / (past_count + 1)) * 0.2
         else:
-            score += 1.0 * 0.2
+            past_count = self.baseline_past_counts.get(shift_type, 0.0)
+            score += (1.0 / (past_count + 1)) * 0.2
 
         # 4. ソフト制約：日勤直後の夜勤を避ける
         if shift_type == 'night':
@@ -472,6 +520,8 @@ class ScheduleBuilder:
         # 過去データからも確認
         if last_date is None and member in self.member_stats:
             last_date = self.member_stats[member].get('last_date')
+        elif last_date is None:
+            last_date = self.baseline_last_date
 
         return last_date
 
