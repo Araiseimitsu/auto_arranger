@@ -29,6 +29,7 @@ class ConstraintChecker:
         constraints = settings.get('constraints', {})
         self.min_days_day = constraints.get('interval', {}).get('min_days_between_same_person_day', 14)
         self.min_days_night = constraints.get('interval', {}).get('min_days_between_same_person_night', 21)
+        self.min_days_day_index3 = constraints.get('interval', {}).get('min_days_between_same_person_day_index3', 7)
         self.night_to_day_gap = constraints.get('night_to_day_gap', {}).get('min_days', 7)
 
         # メンバー個別設定のマップを作成
@@ -265,9 +266,9 @@ class ConstraintChecker:
             (制約OK, エラーメッセージ)
         """
         day_schedule = current_schedule.get('day', {})
-        
-        # index 3は代休があるため制約を緩和(7日)、それ以外は設定値(個別設定優先)
-        min_days = 7 if target_index == 3 else self._get_member_min_days_day(member)
+
+        # index 3は代休があるため制約を緩和、それ以外は設定値(個別設定優先)
+        min_days = self.min_days_day_index3 if target_index == 3 else self._get_member_min_days_day(member)
 
         # 現在のスケジュールから最終日勤日を取得
         last_day_date = None

@@ -3,6 +3,7 @@ constraints:
     max_deviation_ratio: 0.3
   interval:
     min_days_between_same_person_day: 14
+    min_days_between_same_person_day_index3: 7
     min_days_between_same_person_night: 14
   night_to_day_gap:
     min_days: 14

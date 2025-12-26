@@ -118,6 +118,26 @@
           </div>
           <div style="flex: 1; min-width: 150px">
             <label style="display: block; font-size: 13px; margin-bottom: 5px"
+              >当番3間隔 (日)</label
+            >
+            <input
+              type="number"
+              name="min_days_day_index3"
+              value="{{ settings.constraints.interval.min_days_between_same_person_day_index3 | default(7) }}"
+              min="0"
+              style="
+                width: 100%;
+                padding: 6px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+              "
+            />
+            <p style="font-size: 11px; color: #999; margin-top: 2px">
+              代休あり
+            </p>
+          </div>
+          <div style="flex: 1; min-width: 150px">
+            <label style="display: block; font-size: 13px; margin-bottom: 5px"
               >夜勤→日勤間隔 (日)</label
             >
             <input

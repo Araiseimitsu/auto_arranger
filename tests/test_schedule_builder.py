@@ -185,7 +185,8 @@ def test_member_groups_loaded(builder):
 def test_calculate_priority_score_no_history(builder):
     """過去実績なし → 高スコア"""
     current_schedule = {'day': {}, 'night': {}}
-    score = builder._calculate_priority_score('新人', 'day', current_schedule)
+    target_date = date(2025, 3, 29)
+    score = builder._calculate_priority_score('新人', 'day', current_schedule, target_date)
     # 未担当は最大スコア (0.5 + 0.3 + 0.2 = 1.0に近い)
     assert score > 0.9
 
@@ -198,8 +199,9 @@ def test_calculate_priority_score_with_history(builder):
         },
         'night': {}
     }
-    score_maruoka = builder._calculate_priority_score('丸岡', 'day', current_schedule)
-    score_new = builder._calculate_priority_score('新人', 'day', current_schedule)
+    target_date = date(2025, 3, 29)
+    score_maruoka = builder._calculate_priority_score('丸岡', 'day', current_schedule, target_date)
+    score_new = builder._calculate_priority_score('新人', 'day', current_schedule, target_date)
 
     # 担当済みの丸岡 < 未担当の新人
     assert score_maruoka < score_new

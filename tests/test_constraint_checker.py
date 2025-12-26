@@ -14,7 +14,8 @@ def sample_settings():
         'constraints': {
             'interval': {
                 'min_days_between_same_person_day': 14,
-                'min_days_between_same_person_night': 21
+                'min_days_between_same_person_night': 21,
+                'min_days_between_same_person_day_index3': 7
             },
             'night_to_day_gap': {
                 'min_days': 7
@@ -187,7 +188,7 @@ def test_check_overlap_constraint_no_conflict(checker):
             date(2025, 3, 24): {1: '宮本', 2: '松田'}
         }
     }
-    ok, msg = checker.check_overlap_constraint('丸岡', date(2025, 3, 22), current_schedule)
+    ok, msg = checker.check_overlap_constraint('丸岡', date(2025, 3, 22), 'day', current_schedule)
     assert ok is True
 
 
@@ -201,7 +202,7 @@ def test_check_overlap_constraint_day_and_night_same_week(checker):
             date(2025, 3, 24): {1: '丸岡', 2: '松田'}  # 月曜～日曜（3/24～3/30）
         }
     }
-    ok, msg = checker.check_overlap_constraint('丸岡', date(2025, 3, 29), current_schedule)
+    ok, msg = checker.check_overlap_constraint('丸岡', date(2025, 3, 29), 'day', current_schedule)
     assert ok is False
     assert '重複' in msg or '不可' in msg
 
@@ -250,7 +251,7 @@ def test_check_min_interval_day_enough_days(checker, member_stats):
         'night': {}
     }
     target_date = date(2025, 3, 25)  # +15日
-    ok, msg = checker.check_min_interval_day('丸岡', target_date, current_schedule, member_stats)
+    ok, msg = checker.check_min_interval_day('丸岡', target_date, 1, current_schedule, member_stats)
     assert ok is True
 
 
@@ -263,7 +264,7 @@ def test_check_min_interval_day_insufficient_days(checker, member_stats):
         'night': {}
     }
     target_date = date(2025, 3, 17)  # +7日
-    ok, msg = checker.check_min_interval_day('丸岡', target_date, current_schedule, member_stats)
+    ok, msg = checker.check_min_interval_day('丸岡', target_date, 1, current_schedule, member_stats)
     assert ok is False
     assert '最小14日必要' in msg
 
@@ -304,11 +305,11 @@ def test_check_min_interval_night_insufficient_days(checker, member_stats):
 # =============================================================================
 
 def test_check_ng_dates_global(checker):
-    """全体NG日 → NG"""
+    """全体NG日 → スケジュール構築側で判定するため、ここではOK"""
     target_date = date(2025, 1, 1)
     ok, msg = checker.check_ng_dates('丸岡', target_date)
-    assert ok is False
-    assert '全体NG日' in msg
+    # グローバルNG日は個別制約チェックでは判定しない（スケジュール構築側で枠自体を作らない）
+    assert ok is True
 
 
 def test_check_ng_dates_by_member(checker):
@@ -379,14 +380,15 @@ def test_validate_all_constraints_all_ok(checker, member_stats):
 
 
 def test_validate_all_constraints_multiple_violations(checker, member_stats):
-    """複数の制約違反 → False, [エラーリスト]"""
+    """index制約違反 → False, [エラーリスト]"""
     current_schedule = {
         'day': {
             date(2025, 3, 22): {1: '丸岡', 2: '今井', 3: '大関'}
         },
         'night': {}
     }
-    # 丸岡をindex 3に配置（index制約違反）、かつ前回日勤から7日（間隔制約違反）
+    # 丸岡をindex 3に配置（index制約違反）
+    # 注: 前回日勤から7日だが、index 3は7日間隔OK（代休あり）のため間隔制約は問題なし
     ok, errors = checker.validate_all_constraints(
         member='丸岡',
         target_date=date(2025, 3, 29),  # 3/22 + 7日
@@ -396,4 +398,4 @@ def test_validate_all_constraints_multiple_violations(checker, member_stats):
         member_stats=member_stats
     )
     assert ok is False
-    assert len(errors) >= 2  # index制約 + 間隔制約
+    assert len(errors) >= 1  # index制約違反

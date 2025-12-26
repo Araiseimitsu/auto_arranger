@@ -105,7 +105,8 @@ class ConfigGenerator:
                 },
                 'interval': {
                     'min_days_between_same_person_day': 14,
-                    'min_days_between_same_person_night': 21
+                    'min_days_between_same_person_night': 21,
+                    'min_days_between_same_person_day_index3': 7
                 },
                 'no_overlap': {
                     'enabled': True

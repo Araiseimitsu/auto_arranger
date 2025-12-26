@@ -312,7 +312,7 @@ class ScheduleBuilder:
             if ok:
                 # 優先度スコア計算
                 score = self._calculate_priority_score(
-                    candidate, shift_type, current_schedule
+                    candidate, shift_type, current_schedule, target_date
                 )
                 valid_candidates.append((candidate, score))
                 logger.debug(f"  候補: {candidate} (スコア: {score:.3f})")
@@ -332,7 +332,8 @@ class ScheduleBuilder:
         self,
         member: str,
         shift_type: str,
-        current_schedule: Dict
+        current_schedule: Dict,
+        target_date: date
     ) -> float:
         """
         優先度スコアを計算
@@ -346,6 +347,7 @@ class ScheduleBuilder:
             member: メンバー名
             shift_type: 'day' or 'night'
             current_schedule: 現在のスケジュール
+            target_date: 割り当て予定日
 
         Returns:
             優先度スコア（高いほど優先）
@@ -359,7 +361,7 @@ class ScheduleBuilder:
         # 2. 最終担当からの経過日数（長いほど高スコア）
         last_date = self._get_last_assignment(member, shift_type, current_schedule)
         if last_date:
-            days_since = (date.today() - last_date).days
+            days_since = (target_date - last_date).days
             score += min(days_since / 30.0, 1.0) * 0.3
         else:
             score += 1.0 * 0.3  # 未担当は最大スコア

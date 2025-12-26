@@ -134,6 +134,11 @@ async def update_settings(request: Request):
         if min_days_night is not None:
              current_settings["constraints"]["interval"]["min_days_between_same_person_night"] = int(min_days_night)
 
+        # Day Index 3 Interval (with compensatory leave)
+        min_days_day_index3 = form_data.get("min_days_day_index3")
+        if min_days_day_index3 is not None:
+             current_settings["constraints"]["interval"]["min_days_between_same_person_day_index3"] = int(min_days_day_index3)
+
         # Night to Day Gap
         min_gap = form_data.get("min_gap_night_day")
         if min_gap is not None:
