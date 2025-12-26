@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}当番表自動作成システム{% endblock %}</title>
     <link rel="icon" href="/static/resources/auto_arranger.ico" />
-    <link rel="stylesheet" href="/static/css/style.css?v=0.5.6" />
+    <link rel="stylesheet" href="/static/css/style.css?v=0.6.0" />
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
     <script src="/static/js/app.js?v=0.5.6" defer></script>
   </head>
   <body>
     <div class="container">
-      <button id="help-btn" class="btn btn-secondary help-button">HELP</button>
+      <button id="help-btn" class="help-button">HELP</button>
       <header class="app-header">
         <img
           src="/static/resources/images/auto_arranger.png"
@@ -27,15 +27,8 @@
 
       <main>{% block content %}{% endblock %}</main>
 
-      <footer>
-        <div
-          style="
-            text-align: center;
-            margin-top: 40px;
-            color: #86868b;
-            font-size: 12px;
-          "
-        >
+      <footer class="app-footer">
+        <div class="footer-content">
           &copy; {{ current_year }} Auto Arranger. Local Version.
         </div>
       </footer>

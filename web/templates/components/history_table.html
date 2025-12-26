@@ -1,6 +1,6 @@
-<div id="history-table-wrapper">
+<div id="history-table-wrapper" class="animate-fade-in">
     {% if history %}
-    <div style="overflow-x: auto;">
+    <div class="table-container">
         <table>
             <thead>
                 <tr>
@@ -24,7 +24,7 @@
     </div>
 
     <!-- Pagination -->
-    <div class="pagination" style="margin-top: 15px; display: flex; justify-content: center; align-items: center; gap: 20px;">
+    <div class="pagination">
         {% if pagination.has_prev %}
         <button class="btn btn-secondary" 
                 hx-get="/history?page={{ pagination.current_page - 1 }}" 
@@ -33,12 +33,12 @@
             &laquo; 前へ
         </button>
         {% else %}
-        <button class="btn btn-secondary" disabled style="opacity: 0.5;">&laquo; 前へ</button>
+        <button class="btn btn-secondary" disabled>&laquo; 前へ</button>
         {% endif %}
         
-        <span>
+        <span class="pagination-info">
             Page {{ pagination.current_page }} / {{ pagination.total_pages }} 
-            <span style="font-size: 0.8em; color: #666;">(全 {{ pagination.total_count }} 件)</span>
+            <span class="pagination-sub">(全 {{ pagination.total_count }} 件)</span>
         </span>
         
         {% if pagination.has_next %}
@@ -49,11 +49,11 @@
             次へ &raquo;
         </button>
         {% else %}
-        <button class="btn btn-secondary" disabled style="opacity: 0.5;">次へ &raquo;</button>
+        <button class="btn btn-secondary" disabled>次へ &raquo;</button>
         {% endif %}
     </div>
 
     {% else %}
-    <p style="text-align: center; color: #999; padding: 40px;">履歴データがありません</p>
+    <p style="text-align: center; color: var(--text-secondary); padding: 40px;">履歴データがありません</p>
     {% endif %}
 </div>

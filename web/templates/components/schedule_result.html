@@ -1,12 +1,5 @@
-<div style="margin-top: 30px; animation: fadeIn 0.5s ease">
-  <div
-    style="
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    "
-  >
+<div class="animate-fade-in" style="margin-top: 30px;">
+  <div class="card-header" style="border-bottom: none; padding-bottom: 0; margin-bottom: 20px;">
     <h3 style="margin: 0">作成結果 ({{ start_date }} ～ {{ end_date }})</h3>
     <form hx-post="/save_result" hx-target="#save-message">
       <input type="hidden" name="start_date" value="{{ start_date }}" />
@@ -17,21 +10,13 @@
 
   <!-- Statistics Summary -->
   {% if statistics and statistics.fairness %}
-  <div class="card" style="background: #f0f4f8; border: none">
+  <div class="stats-card">
     <h4 style="margin-top: 0">統計情報</h4>
-    <div
-      style="
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
-      "
-    >
+    <div class="stats-grid">
       <div>
         <strong>公平性指標 (偏差比):</strong>
         {% set ratio = statistics.fairness.deviation_ratio %}
-        <span
-          style="color: {% if ratio <= 0.3 %}green{% else %}red{% endif %}; font-weight: bold;"
-        >
+        <span class="{% if ratio <= 0.3 %}stat-value-good{% else %}stat-value-bad{% endif %}">
           {{ "%.2f"|format(ratio) }}
         </span>
       </div>
@@ -46,15 +31,7 @@
   <!-- Day Schedule -->
   <h4>日勤スケジュール</h4>
   {% if schedule.day %}
-  <div
-    style="
-      overflow-x: auto;
-      margin-bottom: 30px;
-      background: white;
-      border-radius: 12px;
-      box-shadow: var(--shadow-sm);
-    "
-  >
+  <div class="table-container">
     <table>
       <thead>
         <tr>
@@ -83,14 +60,7 @@
   <!-- Night Schedule -->
   <h4>夜勤スケジュール</h4>
   {% if schedule.night %}
-  <div
-    style="
-      overflow-x: auto;
-      background: white;
-      border-radius: 12px;
-      box-shadow: var(--shadow-sm);
-    "
-  >
+  <div class="table-container">
     <table>
       <thead>
         <tr>
@@ -121,18 +91,9 @@
 
     <!-- 1. Overlaps -->
     {% if analysis.overlaps %}
-    <div
-      class="alert error"
-      style="
-        background: #fee;
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        border-left: 5px solid red;
-      "
-    >
-      <h4 style="margin: 0 0 10px 0; color: #c00">⚠ 日勤・夜勤の重複警告</h4>
-      <ul style="margin: 0; padding-left: 20px">
+    <div class="result-alert alert-error">
+      <h4 class="alert-title">⚠ 日勤・夜勤の重複警告</h4>
+      <ul class="alert-list">
         {% for item in analysis.overlaps %}
         <li>
           <strong>{{ item.member }}</strong>: {{ item.details }}
@@ -142,36 +103,18 @@
       </ul>
     </div>
     {% else %}
-    <div
-      class="alert success"
-      style="
-        background: #f0fff4;
-        padding: 10px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        border-left: 5px solid green;
-      "
-    >
-      <span style="color: green; font-weight: bold"
-        >✔ 日勤・夜勤の期間内重複はありません</span
-      >
+    <div class="result-alert alert-success">
+      <span style="font-weight: bold; display: flex; align-items: center; gap: 6px;">
+        ✔ 日勤・夜勤の期間内重複はありません
+      </span>
     </div>
     {% endif %}
 
     <!-- 2. Close Intervals -->
     {% if analysis.close_intervals %}
-    <div
-      class="alert warning"
-      style="
-        background: #fff8e1;
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        border-left: 5px solid orange;
-      "
-    >
-      <h4 style="margin: 0 0 10px 0; color: #f57f17">⚠ 近接シフト (7日以内)</h4>
-      <ul style="margin: 0; padding-left: 20px">
+    <div class="result-alert alert-warning">
+      <h4 class="alert-title">⚠ 近接シフト (7日以内)</h4>
+      <ul class="alert-list">
         {% for item in analysis.close_intervals %}
         <li>
           <strong>{{ item.member }}</strong>: {{ item.from }} から {{ item.to }}
@@ -181,32 +124,16 @@
       </ul>
     </div>
     {% else %}
-    <div
-      class="alert success"
-      style="
-        background: #f0fff4;
-        padding: 10px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        border-left: 5px solid green;
-      "
-    >
-      <span style="color: green; font-weight: bold"
-        >✔ 7日以内の連続・近接シフトはありません</span
-      >
+    <div class="result-alert alert-success">
+      <span style="font-weight: bold; display: flex; align-items: center; gap: 6px;">
+        ✔ 7日以内の連続・近接シフトはありません
+      </span>
     </div>
     {% endif %}
 
     <!-- 3. Member Counts -->
     <h4>メンバー別割当数 (直近2ヶ月 + 今回)</h4>
-    <div
-      style="
-        overflow-x: auto;
-        background: white;
-        border-radius: 12px;
-        box-shadow: var(--shadow-sm);
-      "
-    >
+    <div class="table-container">
       <table>
         <thead>
           <tr>
@@ -227,9 +154,9 @@
           <tr>
             <td>{{ item.name }}</td>
             <td><strong>{{ item.new_day }}</strong></td>
-            <td style="color: #666">{{ item.past_day }}</td>
+            <td style="color: var(--text-secondary)">{{ item.past_day }}</td>
             <td><strong>{{ item.new_night }}</strong></td>
-            <td style="color: #666">{{ item.past_night }}</td>
+            <td style="color: var(--text-secondary)">{{ item.past_night }}</td>
           </tr>
           {% endif %} {% endfor %}
         </tbody>
