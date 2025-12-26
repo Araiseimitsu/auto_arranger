@@ -48,10 +48,6 @@ body {
     flex-direction: column;
 }
 
-main {
-    flex: 1;
-}
-
 /* Header */
 .app-header {
     display: flex;
@@ -326,6 +322,21 @@ input[type="checkbox"]:checked::after {
 .mt-4 { margin-top: 1rem; }
 .mb-4 { margin-bottom: 1rem; }
 
+/* Main content area */
+main {
+    flex: 0 0 auto;
+}
+
+/* Tab sections */
+.tab-section {
+    width: 100%;
+}
+
+/* NG sections */
+.ng-section {
+    width: 100%;
+}
+
 /* Modal & Glassmorphism */
 .modal-overlay {
     position: fixed;
@@ -425,7 +436,7 @@ input[type="checkbox"]:checked::after {
     border: 1px dashed #999;
 }
 
-.btn-remove, .btn-edit {
+.btn-remove, .btn-edit, .btn-move {
     background: none;
     border: none;
     color: #999;
@@ -448,6 +459,17 @@ input[type="checkbox"]:checked::after {
 }
 
 .btn-edit:hover {
+    color: var(--accent-color);
+    background: rgba(0, 102, 204, 0.1);
+}
+
+.btn-move {
+    font-size: 16px;
+    font-weight: bold;
+    margin-left: 4px;
+}
+
+.btn-move:hover {
     color: var(--accent-color);
     background: rgba(0, 102, 204, 0.1);
 }

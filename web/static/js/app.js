@@ -170,17 +170,24 @@ function addMember(inputElement, groupName) {
         return;
     }
 
+    // グループに応じた移動先と勤務種別を判定
+    const moveConfig = getMoveConfig(groupName);
+
     // 新しいメンバーカードを作成
     const memberCard = document.createElement('div');
     memberCard.className = 'member-card';
     memberCard.innerHTML = `
         <input type="hidden" name="${groupName}[]" value="${name}" class="member-id" />
-        <label style="display: flex; align-items: center; width: 100%; cursor: grab;">
-            <input type="checkbox" name="${groupName}_enabled[]" value="${name}" checked style="margin-right: 8px;" />
-            <span style="flex: 1;">${name}</span>
+        <label style="display: flex; align-items: center; width: 100%; margin: 0;">
+            <input type="checkbox" name="active_${name}_${moveConfig.shiftType}" checked />
+            <span style="flex: 1; font-weight: 500;">${name}</span>
         </label>
+        ${moveConfig.moveButton}
         <button type="button" class="btn-edit" onclick="openMemberModal('${name}', '', '')">
             ✎
+        </button>
+        <button type="button" class="btn-remove" onclick="this.closest('.member-card').remove()" title="削除">
+            ×
         </button>
     `;
 
@@ -190,4 +197,105 @@ function addMember(inputElement, groupName) {
     // 入力欄をクリア
     inputElement.value = '';
     inputElement.focus();
+}
+
+/**
+ * グループ名から移動設定を取得
+ * @param {string} groupName - グループ名
+ * @returns {Object} - 移動設定
+ */
+function getMoveConfig(groupName) {
+    const configs = {
+        'day_index_1_2': {
+            targetGroup: 'day_index_3',
+            arrow: '→',
+            shiftType: 'day'
+        },
+        'day_index_3': {
+            targetGroup: 'day_index_1_2',
+            arrow: '←',
+            shiftType: 'day'
+        },
+        'night_index_1': {
+            targetGroup: 'night_index_2',
+            arrow: '→',
+            shiftType: 'night'
+        },
+        'night_index_2': {
+            targetGroup: 'night_index_1',
+            arrow: '←',
+            shiftType: 'night'
+        }
+    };
+
+    const config = configs[groupName];
+    if (config) {
+        return {
+            shiftType: config.shiftType,
+            moveButton: `<button type="button" class="btn-move" onclick="moveMemberToGroup(this, '${config.targetGroup}')" title="${config.arrow === '→' ? '右' : '左'}のグループへ移動">${config.arrow}</button>`
+        };
+    }
+
+    // デフォルト（移動ボタンなし）
+    return {
+        shiftType: 'day',
+        moveButton: ''
+    };
+}
+
+/**
+ * メンバーを別のグループに移動
+ * @param {HTMLElement} buttonElement - クリックされたボタン要素
+ * @param {string} targetGroupName - 移動先グループ名
+ */
+function moveMemberToGroup(buttonElement, targetGroupName) {
+    const memberCard = buttonElement.closest('.member-card');
+    if (!memberCard) {
+        console.error('Member card not found');
+        return;
+    }
+
+    // メンバー情報を取得
+    const memberNameSpan = memberCard.querySelector('label span');
+    const memberName = memberNameSpan ? memberNameSpan.textContent.trim() : '';
+    const isActive = memberCard.querySelector('input[type="checkbox"]').checked;
+
+    if (!memberName) {
+        console.error('Member name not found');
+        return;
+    }
+
+    // 移動先のリストコンテナを取得
+    const targetContainer = document.querySelector(`.sortable-list[data-input-name="${targetGroupName}"]`);
+    if (!targetContainer) {
+        console.error(`Target container not found: ${targetGroupName}`);
+        return;
+    }
+
+    // 現在のカードを削除
+    memberCard.remove();
+
+    // 移動先グループの設定を取得
+    const moveConfig = getMoveConfig(targetGroupName);
+
+    // 新しいメンバーカードを作成
+    const newMemberCard = document.createElement('div');
+    newMemberCard.className = 'member-card';
+    newMemberCard.innerHTML = `
+        <input type="hidden" name="${targetGroupName}[]" value="${memberName}" class="member-id" />
+        <label style="display: flex; align-items: center; width: 100%; margin: 0;">
+            <input type="checkbox" name="active_${memberName}_${moveConfig.shiftType}" ${isActive ? 'checked' : ''} />
+            <span style="flex: 1; font-weight: 500;">${memberName}</span>
+        </label>
+        ${moveConfig.moveButton}
+        <button type="button" class="btn-edit" onclick="openMemberModal('${memberName}', '', '')" title="編集">
+            ✎
+        </button>
+        <button type="button" class="btn-remove" onclick="this.closest('.member-card').remove()" title="削除">
+            ×
+        </button>
+    `;
+
+    // 移動先リストに追加
+    targetContainer.appendChild(newMemberCard);
 }

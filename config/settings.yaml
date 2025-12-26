@@ -2,7 +2,7 @@ constraints:
   fairness:
     max_deviation_ratio: 0.3
   interval:
-    min_days_between_same_person_day: 14
+    min_days_between_same_person_day: 10
     min_days_between_same_person_day_index3: 7
     min_days_between_same_person_night: 14
   night_to_day_gap:
@@ -33,8 +33,6 @@ members:
     - active: true
       name: 丸岡
     - active: true
-      name: 今井
-    - active: true
       name: 加藤凌
     - active: true
       name: 加藤貴
@@ -55,9 +53,11 @@ members:
     - active: true
       name: 高橋拓
     - active: true
-      name: 高橋良
+      name: 今井
     - active: true
       name: 髙田
+    - active: true
+      name: 高橋良
     - active: true
       name: 隝田
     index_3_group:
