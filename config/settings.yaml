@@ -1,96 +1,96 @@
-members:
-  day_shift:
-    index_1_2_group:
-      - name: 丸岡
-        active: true
-      - name: 今井
-        active: true
-      - name: 加藤凌
-        active: true
-      - name: 加藤貴
-        active: true
-      - name: 勅使河原
-        active: true
-      - name: 斉藤
-        active: true
-      - name: 新井洋
-        active: true
-      - name: 新井翔
-        active: true
-      - name: 木村
-        active: true
-      - name: 楮本
-        active: true
-      - name: 矢野
-        active: true
-      - name: 高橋拓
-        active: true
-      - name: 高橋良
-        active: true
-      - name: 髙田
-        active: true
-      - name: 隝田
-        active: true
-    index_3_group:
-      - name: 大関
-        active: true
-      - name: 小久保
-        active: true
-      - name: 小林直
-        active: true
-      - name: 塩田
-        active: true
-  night_shift:
-    index_1_group:
-      - name: 丸岡
-        active: true
-      - name: 加藤凌
-        active: true
-      - name: 新井洋
-        active: true
-      - name: 木村
-        active: true
-      - name: 楮本
-        active: true
-      - name: 矢野
-        active: true
-      - name: 高橋拓
-        active: true
-      - name: 隝田
-        active: true
-    index_2_group:
-      - name: 大関
-        active: true
-      - name: 小久保
-        active: true
-      - name: 小林直
-        active: true
-      - name: 松田
-        active: true
-        fixed_pattern: biweekly
-matsuda_schedule:
-  enabled: true
-  index: 2
-  pattern: biweekly
-  reference_date: "2025-02-20"
 constraints:
-  rotation_period:
-    start_day: 21
-    duration_months: 2
   fairness:
     max_deviation_ratio: 0.3
   interval:
     min_days_between_same_person_day: 14
     min_days_between_same_person_night: 14
+  night_to_day_gap:
+    min_days: 14
   no_overlap:
     enabled: true
-  night_to_day_gap:
-    min_days: 7
+  rotation_period:
+    duration_months: 2
+    start_day: 21
 historical_data:
-  lookback_months: 2
   csv_path: data/duty_roster_2021_2025.csv
+  lookback_months: 2
+matsuda_schedule:
+  enabled: true
+  index: 2
+  pattern: biweekly
+  reference_date: '2025-02-20'
+members:
+  day_shift:
+    index_1_2_group:
+    - active: true
+      name: 丸岡
+    - active: true
+      name: 今井
+    - active: true
+      name: 加藤凌
+    - active: true
+      name: 加藤貴
+    - active: true
+      name: 勅使河原
+    - active: true
+      name: 斉藤
+    - active: true
+      name: 新井洋
+    - active: true
+      name: 新井翔
+    - active: true
+      name: 木村
+    - active: true
+      name: 楮本
+    - active: true
+      name: 矢野
+    - active: true
+      name: 高橋拓
+    - active: true
+      name: 高橋良
+    - active: true
+      name: 髙田
+    - active: true
+      name: 隝田
+    index_3_group:
+    - active: true
+      name: 大関
+    - active: true
+      name: 小久保
+    - active: true
+      name: 小林直
+    - active: true
+      name: 塩田
+  night_shift:
+    index_1_group:
+    - active: true
+      name: 丸岡
+    - active: true
+      name: 加藤凌
+    - active: true
+      name: 新井洋
+    - active: true
+      name: 木村
+    - active: true
+      name: 楮本
+    - active: true
+      name: 矢野
+    - active: true
+      name: 高橋拓
+    - active: true
+      name: 隝田
+    index_2_group:
+    - active: true
+      name: 大関
+    - active: true
+      name: 小久保
+    - active: true
+      name: 小林直
+    - active: true
+      fixed_pattern: biweekly
+      name: 松田
 output:
   format: table
-  show_statistics: true
-  save_to_file: true
   output_dir: data/output
+  save_to_file: true
+  show_statistics: true

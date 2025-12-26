@@ -91,8 +91,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Legacy support for member modal in settings_form.html
+// Member modal management
+let currentMemberName = "";
+
 function openMemberModal(name, minDaysDay, minDaysNight) {
+    currentMemberName = name;
     const modal = document.getElementById('member-modal');
     if (modal) {
         document.getElementById("modal-member-name").textContent = name;
@@ -100,10 +103,6 @@ function openMemberModal(name, minDaysDay, minDaysNight) {
         document.getElementById("modal-min-days-night").value = minDaysNight || "";
         modal.classList.add('active');
         modal.classList.add('show');
-        
-        // Update currentMemberName which is used by saveMemberAttributes
-        // This variable is local to settings_form.html's script, but we can't easily access it.
-        // Let's ensure the script in settings_form.html still works by keeping its core logic.
     }
 }
 
@@ -113,4 +112,82 @@ function closeMemberModal() {
         modal.classList.remove('active');
         modal.classList.remove('show');
     }
+    currentMemberName = "";
+}
+
+function saveMemberAttributes() {
+    if (!currentMemberName) {
+        console.error('No member selected');
+        return;
+    }
+
+    const data = {
+        name: currentMemberName,
+        min_days_day: document.getElementById("modal-min-days-day").value,
+        min_days_night: document.getElementById("modal-min-days-night").value,
+    };
+
+    fetch("/settings/member/update", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    })
+        .then((response) => response.json())
+        .then((result) => {
+            if (result.success) {
+                closeMemberModal();
+                window.location.reload();
+            } else {
+                alert("エラー: " + result.error);
+            }
+        })
+        .catch((error) => {
+            console.error('Save error:', error);
+            alert("通信エラー: " + error);
+        });
+}
+
+/**
+ * メンバーを追加する関数
+ * @param {HTMLInputElement} inputElement - 名前入力欄
+ * @param {string} groupName - グループ名（例: 'day_index_1_2'）
+ */
+function addMember(inputElement, groupName) {
+    const name = inputElement.value.trim();
+
+    if (!name) {
+        alert('名前を入力してください');
+        return;
+    }
+
+    // 対象のリストコンテナを取得
+    const listContainer = document.querySelector(`.sortable-list[data-input-name="${groupName}"]`);
+
+    if (!listContainer) {
+        console.error(`List container not found for group: ${groupName}`);
+        return;
+    }
+
+    // 新しいメンバーカードを作成
+    const memberCard = document.createElement('div');
+    memberCard.className = 'member-card';
+    memberCard.innerHTML = `
+        <input type="hidden" name="${groupName}[]" value="${name}" class="member-id" />
+        <label style="display: flex; align-items: center; width: 100%; cursor: grab;">
+            <input type="checkbox" name="${groupName}_enabled[]" value="${name}" checked style="margin-right: 8px;" />
+            <span style="flex: 1;">${name}</span>
+        </label>
+        <button type="button" class="btn-edit" onclick="openMemberModal('${name}', '', '')">
+            ✎
+        </button>
+    `;
+
+    // リストに追加
+    listContainer.appendChild(memberCard);
+
+    // 入力欄をクリア
+    inputElement.value = '';
+    inputElement.focus();
 }

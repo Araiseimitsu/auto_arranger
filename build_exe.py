@@ -12,6 +12,7 @@ args = [
     'web/app.py',
     '--name=AutoArranger',
     '--onefile',
+    '--noconsole',  # コンソールウィンドウを非表示
     '--add-data=web/templates;web/templates',
     '--add-data=web/static;web/static',
     '--add-data=config;config',  # Default configs
@@ -26,6 +27,7 @@ args = [
     '--hidden-import=engineio.async_drivers.asgi',
     '--hidden-import=pandas',
     '--hidden-import=yaml',
+    '--hidden-import=webview',  # pywebview
     '--clean',
 ]
 

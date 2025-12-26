@@ -32,18 +32,24 @@ app.include_router(router)
 
 if __name__ == "__main__":
     import uvicorn
-    import webbrowser
     import threading
-    import time
+    import webview
 
-    def open_browser():
-        time.sleep(1.5)
-        webbrowser.open("http://127.0.0.1:8000")
+    def start_server():
+        """uvicornサーバーをバックグラウンドで起動"""
+        uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
 
-    print("Starting server at http://127.0.0.1:8000")
-    
-    # Launch browser in a separate thread
-    threading.Thread(target=open_browser, daemon=True).start()
-    
-    # Run server
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    # サーバーをバックグラウンドスレッドで起動
+    server_thread = threading.Thread(target=start_server, daemon=True)
+    server_thread.start()
+
+    # pywebviewでウィンドウを作成
+    # ウィンドウを閉じるとアプリケーションが終了する
+    webview.create_window(
+        "Auto Arranger",
+        "http://127.0.0.1:8000",
+        width=1200,
+        height=800,
+        min_size=(800, 600)
+    )
+    webview.start()
