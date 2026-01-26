@@ -189,3 +189,4 @@ class ScheduleAnalyzer:
         result_list.sort(key=lambda x: x['name'])
         self.analysis_result["member_counts"] = result_list
 
+
