@@ -11,6 +11,7 @@ from src.data_loader import load_and_process_data, DutyRosterLoader
 from src.schedule_builder import ScheduleBuilder
 from src.schedule_analyzer import ScheduleAnalyzer
 from src.output_formatter import OutputFormatter
+from src.ng_text_parser import parse_ng_text
 from utils.date_utils import get_rotation_period
 from utils.logger import setup_logger
 
@@ -173,6 +174,45 @@ def get_all_members() -> List[str]:
             extract_from_group(m['night_shift'].get('index_2_group', []))
             
     return sorted(list(members))
+
+# --- Bulk NG Import ---
+
+def bulk_preview_ng_dates(
+    text: str, mode: str, fiscal_year: int = None
+) -> List[Dict]:
+    """フリーテキストをパースしてプレビュー用データを返す"""
+    members = get_all_members()
+    return parse_ng_text(text, members, mode=mode, fiscal_year=fiscal_year)
+
+
+def bulk_apply_ng_dates(entries: List[Dict]) -> int:
+    """確認済みエントリをng_dates.yamlに一括登録
+
+    Returns: 登録した日付の件数
+    """
+    data = load_ng_dates()
+    count = 0
+
+    for entry in entries:
+        member = entry.get("matched_name")
+        dates = entry.get("resolved_dates", [])
+        if not member or not dates:
+            continue
+
+        if member not in data["by_member"]:
+            data["by_member"][member] = []
+
+        for date_str in dates:
+            if date_str not in data["by_member"][member]:
+                data["by_member"][member].append(date_str)
+                count += 1
+
+        data["by_member"][member].sort()
+
+    if count > 0:
+        save_ng_dates(data)
+
+    return count
 
 # --- End Helpers ---
 

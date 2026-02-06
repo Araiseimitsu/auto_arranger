@@ -1,0 +1,57 @@
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th class="bulk-check-col">
+                    <input type="checkbox" id="bulk-select-all" checked
+                        onchange="document.querySelectorAll('.bulk-entry-check').forEach(c => c.checked = this.checked)">
+                </th>
+                <th>入力名</th>
+                <th>マッチ結果</th>
+                <th>信頼度</th>
+                <th>解釈された日付</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+            <tr class="{% if entry.confidence < 0.7 %}bulk-row-low-confidence{% endif %}">
+                <td>
+                    <input type="checkbox" class="bulk-entry-check"
+                        {% if entry.selected %}checked{% endif %}
+                        data-entry='{{ {"matched_name": entry.matched_name, "resolved_dates": entry.resolved_dates} | tojson }}'>
+                </td>
+                <td>{{ entry.input_name }}</td>
+                <td>
+                    {% if entry.matched_name %}
+                        {{ entry.matched_name }}
+                    {% else %}
+                        <span class="text-secondary">未マッチ</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% set pct = (entry.confidence * 100) | int %}
+                    <span class="{% if pct >= 90 %}text-success{% elif pct >= 70 %}text-warning{% else %}text-danger{% endif %}">
+                        {{ pct }}%
+                    </span>
+                </td>
+                <td>
+                    {% if entry.resolved_dates %}
+                        {{ entry.resolved_dates | join(', ') }}
+                    {% else %}
+                        <span class="text-secondary">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="bulk-actions">
+    <span class="text-secondary bulk-count">
+        {{ entries | selectattr('selected') | list | length }} / {{ entries | length }} 件選択中
+    </span>
+    <button type="button" class="btn btn-primary" onclick="applyBulkNg()">
+        一括登録
+    </button>
+</div>

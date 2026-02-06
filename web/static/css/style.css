@@ -933,3 +933,14 @@ tr:hover td {
     align-items: center;
     gap: 6px;
 }
+
+/* 信頼度カラー */
+.text-success { color: var(--success-color); font-weight: 600; }
+.text-warning { color: var(--warning-color); font-weight: 600; }
+.text-danger { color: var(--danger-color); font-weight: 600; }
+
+/* 一括登録プレビュー */
+.bulk-check-col { width: 40px; }
+.bulk-row-low-confidence { opacity: 0.6; }
+.bulk-actions { text-align: right; margin-top: 16px; }
+.bulk-count { margin-right: 12px; }

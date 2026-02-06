@@ -15,6 +15,7 @@
         <button class="btn-tab active" onclick="switchNgTab(this, 'ng-global')">全体NG (祝日等)</button>
         <button class="btn-tab" onclick="switchNgTab(this, 'ng-member')">メンバーNG</button>
         <button class="btn-tab" onclick="switchNgTab(this, 'ng-period')">期間NG</button>
+        <button class="btn-tab" onclick="switchNgTab(this, 'ng-bulk')">一括登録</button>
         <button class="btn-tab" onclick="switchNgTab(this, 'ng-advanced')">詳細編集 (YAML)</button>
     </div>
 
@@ -167,6 +168,51 @@
         </div>
     </div>
 
+    <!-- Bulk Import Section -->
+    <div id="ng-bulk" class="ng-section hidden animate-fade-in">
+        <div class="flex-row">
+            <div class="settings-block" style="flex: 1; min-width: 300px;">
+                <h4 class="member-group-title" style="margin-bottom: 16px;">テキスト貼り付け</h4>
+                <p class="form-hint" style="margin-bottom: 12px;">
+                    Googleフォーム等の回答をそのまま貼り付けてください。<br>
+                    日付行と名前行を交互に記述します（日付→名前を推奨、逆順も対応）。
+                </p>
+                <div class="form-group">
+                    <label>モード</label>
+                    <select id="bulk-mode">
+                        <option value="daily">日勤（個別日付）</option>
+                        <option value="weekly">夜勤（週単位: 月曜→7日間）</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>年度</label>
+                    <select id="bulk-fiscal-year">
+                        {% set cy = current_year|default(2025) %}
+                        <option value="{{ cy - 1 }}">{{ cy - 1 }}年度</option>
+                        <option value="{{ cy }}" selected>{{ cy }}年度</option>
+                        <option value="{{ cy + 1 }}">{{ cy + 1 }}年度</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>テキスト</label>
+                    <textarea id="bulk-text" rows="10" placeholder="例:&#10;3/7,8&#10;田中、佐藤&#10;3/14,15&#10;山田"></textarea>
+                </div>
+                <button type="button" class="btn btn-primary" style="width: 100%;"
+                    onclick="previewBulkNg()">
+                    プレビュー
+                </button>
+            </div>
+            <div style="flex: 2; min-width: 300px;">
+                <h4 class="member-group-title" style="margin-bottom: 16px;">プレビュー結果</h4>
+                <div id="bulk-preview-result">
+                    <p style="color: var(--text-secondary); padding: 20px 0;">
+                        テキストを入力して「プレビュー」を押してください
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Advanced (YAML) Section -->
     <div id="ng-advanced" class="ng-section hidden animate-fade-in">
         <form hx-post="/ng_dates/update" hx-target="#ng-dates-container">
@@ -184,22 +230,51 @@
 
     <script>
         function switchNgTab(btn, targetId) {
-            // Update buttons
             const container = document.getElementById('ng-dates-container');
             container.querySelectorAll('.btn-tab').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
-            // Update sections
             container.querySelectorAll('.ng-section').forEach(s => {
                 s.classList.add('hidden');
             });
-            
+
             const target = document.getElementById(targetId);
             target.classList.remove('hidden');
-            // Trigger animation restart
             target.classList.remove('animate-fade-in');
-            void target.offsetWidth; // trigger reflow
+            void target.offsetWidth;
             target.classList.add('animate-fade-in');
+        }
+
+        function previewBulkNg() {
+            const text = document.getElementById('bulk-text').value;
+            const mode = document.getElementById('bulk-mode').value;
+            const fiscalYear = document.getElementById('bulk-fiscal-year').value;
+            const resultDiv = document.getElementById('bulk-preview-result');
+
+            const formData = new FormData();
+            formData.append('text', text);
+            formData.append('mode', mode);
+            formData.append('fiscal_year', fiscalYear);
+
+            fetch('/ng_dates/bulk/preview', { method: 'POST', body: formData })
+                .then(r => r.text())
+                .then(html => { resultDiv.innerHTML = html; });
+        }
+
+        function applyBulkNg() {
+            const checkboxes = document.querySelectorAll('.bulk-entry-check:checked');
+            const entries = [];
+            checkboxes.forEach(cb => {
+                entries.push(JSON.parse(cb.dataset.entry));
+            });
+
+            const formData = new FormData();
+            formData.append('entries', JSON.stringify(entries));
+
+            htmx.ajax('POST', '/ng_dates/bulk/apply', {
+                target: '#ng-dates-container',
+                values: { entries: JSON.stringify(entries) }
+            });
         }
     </script>
 </div>

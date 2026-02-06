@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from datetime import date
+import json
 import shutil
 import yaml
 
@@ -16,6 +17,7 @@ from .services import (
     add_member_ng_date, remove_member_ng_date,
     add_period_ng, remove_period_ng,
     get_all_members,
+    bulk_preview_ng_dates, bulk_apply_ng_dates,
     get_resource_path,
     CSV_PATH
 )
@@ -172,12 +174,13 @@ async def render_ng_dates_form(request, message=None, error=None):
     ng_dates = load_ng_dates()
     ng_dates_yaml = yaml.dump(ng_dates, allow_unicode=True, default_flow_style=False)
     all_members = get_all_members()
-    
+
     context = {
         "request": request,
         "ng_dates": ng_dates,
         "ng_dates_yaml": ng_dates_yaml,
-        "all_members": all_members
+        "all_members": all_members,
+        "current_year": date.today().year,
     }
     if message: context["success_message"] = message
     if error: context["error_message"] = error
@@ -250,6 +253,58 @@ async def remove_period_ng_route(request: Request):
     if member and start:
         remove_period_ng(member, start)
     return await render_ng_dates_form(request)
+
+# --- Bulk NG Import ---
+
+@router.post("/ng_dates/bulk/preview", response_class=HTMLResponse)
+async def bulk_preview_ng(request: Request):
+    """フリーテキストをパースしてプレビューHTMLを返す"""
+    form = await request.form()
+    text = form.get('text', '')
+    mode = form.get('mode', 'daily')
+    fiscal_year = form.get('fiscal_year')
+
+    if not text.strip():
+        return HTMLResponse(
+            '<div class="result-alert alert-error">テキストを入力してください</div>'
+        )
+
+    try:
+        fy = int(fiscal_year) if fiscal_year else None
+    except ValueError:
+        fy = None
+
+    entries = bulk_preview_ng_dates(text, mode, fy)
+
+    if not entries:
+        return HTMLResponse(
+            '<div class="result-alert alert-error">解析可能なデータが見つかりませんでした</div>'
+        )
+
+    return templates.TemplateResponse("components/ng_bulk_preview.html", {
+        "request": request,
+        "entries": entries,
+    })
+
+
+@router.post("/ng_dates/bulk/apply", response_class=HTMLResponse)
+async def bulk_apply_ng(request: Request):
+    """選択されたエントリを一括登録"""
+    form = await request.form()
+    entries_json = form.get('entries', '[]')
+
+    try:
+        entries = json.loads(entries_json)
+    except json.JSONDecodeError:
+        return await render_ng_dates_form(request, error="データの解析に失敗しました")
+
+    if not entries:
+        return await render_ng_dates_form(request, error="登録対象が選択されていません")
+
+    count = bulk_apply_ng_dates(entries)
+    return await render_ng_dates_form(
+        request, message=f"{count}件のNG日を登録しました"
+    )
 
 # --- End NG Operations ---
 

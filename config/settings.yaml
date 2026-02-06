@@ -33,8 +33,6 @@ members:
     - active: true
       name: 丸岡
     - active: true
-      name: 加藤凌
-    - active: true
       name: 加藤貴
     - active: true
       name: 勅使河原
@@ -60,6 +58,8 @@ members:
       name: 高橋良
     - active: true
       name: 隝田
+    - active: true
+      name: 加藤凌
     index_3_group:
     - active: true
       name: 大関
@@ -71,6 +71,8 @@ members:
       min_days_day: 7
       min_days_night: 7
       name: 塩田
+    - active: true
+      name: 幅下孝一
   night_shift:
     index_1_group:
     - active: true
@@ -99,6 +101,8 @@ members:
     - active: true
       fixed_pattern: biweekly
       name: 松田
+    - active: true
+      name: 幅下孝一
 output:
   format: table
   output_dir: data/output

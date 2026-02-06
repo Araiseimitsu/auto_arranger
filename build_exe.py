@@ -2,6 +2,9 @@ import PyInstaller.__main__
 import shutil
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parent
+ICON_PATH = PROJECT_ROOT / 'web' / 'static' / 'resources' / 'auto_arranger.ico'
+
 # Clean previous build
 if Path("dist").exists():
     shutil.rmtree("dist")
@@ -32,14 +35,12 @@ args = [
 ]
 
 # Check for icon
-icon_path = Path('web/static/resources/auto_arranger.ico').resolve()
-if icon_path.exists():
-    print(f"Icon found at: {icon_path}")
-    args.append(f'--icon={str(icon_path)}')
+if ICON_PATH.exists():
+    print(f"Icon found at: {ICON_PATH}")
+    args.append(f'--icon={str(ICON_PATH)}')
 else:
-    print(f"WARNING: Icon file not found at {icon_path}. Please convert the PNG to ICO to have a custom icon.")
+    print(f"WARNING: Icon file not found at {ICON_PATH}. Please convert the PNG to ICO to have a custom icon.")
 
 PyInstaller.__main__.run(args)
 
 print("Build complete. Executable is in 'dist' folder.")
-
