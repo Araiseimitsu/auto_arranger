@@ -7,11 +7,13 @@ import json
 import shutil
 import yaml
 
+from src.calendar_view import build_calendar_print_data
 from .services import (
     load_settings, save_settings,
     load_ng_dates, save_ng_dates,
     get_history_summary,
     run_schedule_generation,
+    get_selected_variant_result,
     save_generated_schedule,
     add_global_ng_date, remove_global_ng_date,
     add_member_ng_date, remove_member_ng_date,
@@ -403,6 +405,51 @@ async def upload_csv(request: Request, file: UploadFile = File(...)):
     except Exception as e:
         return HTMLResponse(f"<div class='error'>Upload Error: {e}</div>", status_code=500)
 
+
+@router.get("/print/calendar", response_class=HTMLResponse)
+async def print_calendar(
+    request: Request,
+    start_date: str,
+    variant_index: int = 0,
+    variants: int = 1,
+    variant_top_k: int = 3,
+):
+    try:
+        date.fromisoformat(start_date)
+    except ValueError:
+        return HTMLResponse("<div class='error'>無効な開始日です</div>", status_code=400)
+
+    success, payload, message = get_selected_variant_result(
+        start_date,
+        variant_index=variant_index,
+        variants=variants,
+        variant_top_k=variant_top_k,
+    )
+    if not success:
+        return HTMLResponse(f"<div class='error'>{message}</div>", status_code=400)
+
+    selected = payload["selected"]
+    result = payload["result"]
+    ng_dates = load_ng_dates()
+    calendar_data = build_calendar_print_data(
+        selected["schedule"],
+        ng_dates,
+        result["start_date"],
+        result["end_date"],
+    )
+
+    return templates.TemplateResponse(
+        "print_calendar.html",
+        {
+            "request": request,
+            "calendar_data": calendar_data,
+            "start_date": result["start_date"],
+            "end_date": result["end_date"],
+            "variant_number": selected["variant_index"] + 1,
+            "print_created_at": date.today(),
+        },
+    )
+
 @router.post("/save_result", response_class=HTMLResponse)
 async def save_result(request: Request):
     form_data = await request.form()
@@ -421,21 +468,15 @@ async def save_result(request: Request):
     except ValueError:
         return HTMLResponse("<div class='error'>バリアント設定が無効です</div>")
 
-    success, result, message = run_schedule_generation(
+    success, payload, message = get_selected_variant_result(
         start_date,
+        variant_index=variant_index_int,
         variants=variants_int,
         variant_top_k=variant_top_k_int
     )
-    
+
     if success:
-        selected = None
-        for item in result['variants']:
-            if item['variant_index'] == variant_index_int:
-                selected = item
-                break
-        if selected is None:
-            return HTMLResponse("<div class='error'>選択されたバージョンが見つかりません</div>")
-        path = save_generated_schedule(selected['schedule'])
+        path = save_generated_schedule(payload["selected"]["schedule"])
         return HTMLResponse(f"<div class='success'>CSVを保存しました: {path}</div>")
     else:
         return HTMLResponse(f"<div class='error'>保存失敗: {message}</div>")

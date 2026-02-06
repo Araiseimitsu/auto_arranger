@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>当番表カレンダー印刷</title>
+    <link rel="stylesheet" href="/static/css/print_calendar.css?v=0.1.0" />
+    <script src="/static/js/print_calendar.js?v=0.1.0" defer></script>
+  </head>
+  <body>
+    <div class="print-toolbar no-print">
+      <a href="/" class="toolbar-link">トップへ戻る</a>
+      <button type="button" id="print-button" class="toolbar-button">A4で印刷</button>
+    </div>
+
+    <main class="sheet">
+      <header class="sheet-header">
+        <h1>当番表カレンダー</h1>
+        <div class="meta-grid">
+          <div>対象期間: {{ start_date }} ～ {{ end_date }}</div>
+          <div>バージョン: {{ variant_number }}</div>
+          <div>印刷日: {{ print_created_at }}</div>
+        </div>
+      </header>
+
+      {% for month in calendar_data.months %}
+      <section class="calendar-month">
+        <h2>{{ month.label }}</h2>
+        <table class="calendar-table">
+          <thead>
+            <tr>
+              <th>日</th>
+              <th>月</th>
+              <th>火</th>
+              <th>水</th>
+              <th>木</th>
+              <th>金</th>
+              <th>土</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for week in month.weeks %}
+            <tr>
+              {% for day in week.days %}
+              <td
+                class="
+                  {% if not day.in_month %}is-outside-month{% endif %}
+                  {% if not day.in_range %}is-outside-range{% endif %}
+                  {% if day.is_weekend %}is-weekend{% endif %}
+                  {% if day.is_today %}is-today{% endif %}
+                "
+              >
+                <div class="day-head">
+                  <span class="day-number">{{ day.date.day }}</span>
+                  {% if day.has_global_ng %}
+                  <span class="chip chip-global">全体NG</span>
+                  {% endif %}
+                </div>
+
+                {% if day.day_assignments or day.night_members %}
+                <ul class="assign-list">
+                  {% for item in day.day_assignments %}
+                  <li>当{{ item.index }}: {{ item.member }}</li>
+                  {% endfor %}
+                  {% if day.night_members %}
+                  <li>
+                    夜勤: {{ day.night_members|join(" / ") }}
+                    {% if day.night_week_start and day.night_week_end %}
+                    <span class="week-note">({{ day.night_week_start.month }}/{{ day.night_week_start.day }}-{{ day.night_week_end.month }}/{{ day.night_week_end.day }})</span>
+                    {% endif %}
+                  </li>
+                  {% endif %}
+                </ul>
+                {% else %}
+                <div class="assign-empty">-</div>
+                {% endif %}
+
+                {% if day.member_ng_count > 0 %}
+                <div class="member-ng">
+                  出勤不可: {{ day.member_ng_preview }}
+                </div>
+                {% endif %}
+              </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+      {% endfor %}
+
+      <section class="ng-summary">
+        <h2>出勤不可日一覧（期間内）</h2>
+
+        <div class="summary-block">
+          <h3>全体NG日</h3>
+          {% if calendar_data.global_ng_dates %}
+          <p>
+            {% for d in calendar_data.global_ng_dates %}
+            {{ d }}{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </p>
+          {% else %}
+          <p>なし</p>
+          {% endif %}
+        </div>
+
+        <div class="summary-block">
+          <h3>日別の出勤不可</h3>
+          {% if calendar_data.daily_ng_rows %}
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>全体NG</th>
+                <th>出勤不可メンバー</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in calendar_data.daily_ng_rows %}
+              <tr>
+                <td>{{ row.date }} ({{ row.weekday_label }})</td>
+                <td>{% if row.is_global_ng %}あり{% else %}-{% endif %}</td>
+                <td>
+                  {% if row.members %}
+                  {{ row.members|join(", ") }}
+                  {% else %}
+                  -
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p>なし</p>
+          {% endif %}
+        </div>
+
+        <div class="summary-block">
+          <h3>個別NG日</h3>
+          {% if calendar_data.member_ng_rows %}
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>メンバー</th>
+                <th>件数</th>
+                <th>日付</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in calendar_data.member_ng_rows %}
+              <tr>
+                <td>{{ row.member }}</td>
+                <td>{{ row.count }}</td>
+                <td>
+                  {% for d in row.dates %}
+                  {{ d }}{% if not loop.last %}, {% endif %}
+                  {% endfor %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p>なし</p>
+          {% endif %}
+        </div>
+
+        <div class="summary-block">
+          <h3>期間NG</h3>
+          {% if calendar_data.period_ng_rows %}
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>メンバー</th>
+                <th>開始日</th>
+                <th>終了日</th>
+                <th>理由</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in calendar_data.period_ng_rows %}
+              <tr>
+                <td>{{ row.member }}</td>
+                <td>{{ row.start }}</td>
+                <td>{{ row.end }}</td>
+                <td>{{ row.reason }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p>なし</p>
+          {% endif %}
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

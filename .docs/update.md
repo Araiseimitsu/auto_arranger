@@ -4,6 +4,72 @@
 
 ---
 
+## 2026-02-06: NG一括登録パーサーの入力ゆれ耐性を強化
+
+### 変更内容
+- `src/ng_text_parser.py` を拡張し、以下の入力形式を自動解釈できるよう改善
+  - 日付範囲: `3/7-9`, `3/7〜3/9`, `3/7~3/9`, `3/30~4/2`
+  - 和文日付: `3月7日`, `2026年3月7日`
+  - 曜日注釈付き: `3/7(土)`, `3月8日（日）`
+  - 1行混在: `今井敬史 3/7,3/8` / `3/7,3/8 今井敬史`
+  - 既存の `.` 区切り（`3/7. 3/8`）も継続対応
+- 日付行判定を `/` 形式以外にも拡張し、ブロック分割の取りこぼしを低減
+- 不自然な長大範囲の誤入力対策として、範囲展開は最大63日までに制限
+
+### 変更ファイル
+- `src/ng_text_parser.py`
+- `tests/test_ng_text_parser.py`
+
+### テスト
+- `py -3 -m pytest tests/test_ng_text_parser.py -q`（63 passed）
+- `py -3 -m pytest -q`（既存テスト1件失敗: `tests/test_schedule_builder.py::test_calculate_priority_score_no_history`）
+
+---
+
+## 2026-02-06: NG一括登録の「ピリオド+空白」日付区切りを修正
+
+### 変更内容
+- `src/ng_text_parser.py` の `normalize_separators` を修正し、`3/7. 3/8. 3/21. 3/22` のような `.` 区切り（空白あり/なし、全角句点含む）をカンマ区切りとして正しく解釈
+- これにより、プレビューで `resolved_dates` が `-` になっていた行（例: 今井敬史）が自動選択されて一括登録できるよう改善
+- `tests/test_ng_text_parser.py` に回帰テストを追加（区切り正規化テスト、実際の入力形式での統合テスト）
+
+### 変更ファイル
+- `src/ng_text_parser.py`
+- `tests/test_ng_text_parser.py`
+
+### テスト
+- `py -3 -m pytest tests/test_ng_text_parser.py -q`（56 passed）
+
+---
+
+## 2026-02-06: 印刷向けカレンダー結果ページを追加
+
+### 変更内容
+- 当番表の各バリアントに `印刷用カレンダー` ボタンを追加し、専用ページ `/print/calendar` を開けるように変更
+- `src/calendar_view.py` を追加し、生成済みスケジュール（日勤/夜勤）とNG設定（全体/個別/期間）を印刷用カレンダーデータへ変換
+- 印刷専用テンプレート `web/templates/print_calendar.html` を追加し、月次カレンダーと出勤不可一覧（全体NG・日別・個別・期間）を表示
+- 印刷専用スタイル `web/static/css/print_calendar.css` と印刷ボタン処理 `web/static/js/print_calendar.js` を追加
+- `web/services.py` にバリアント選択共通処理 `get_selected_variant_result` を追加し、`save_result` と印刷ルートで再利用
+
+### 変更ファイル
+- `src/calendar_view.py`
+- `tests/test_calendar_view.py`
+- `web/routes.py`
+- `web/services.py`
+- `web/templates/components/schedule_variant.html`
+- `web/templates/print_calendar.html`
+- `web/static/css/print_calendar.css`
+- `web/static/js/print_calendar.js`
+- `web/static/css/style.css`
+- `web/templates/base.html`
+
+### テスト
+- `py -3 -m pytest tests/test_calendar_view.py -q`（3 passed）
+- `py -3 -m pytest tests/test_ng_status_view.py -q`（5 passed）
+- `py -3 -m pytest -q`（既存テスト1件失敗: `tests/test_schedule_builder.py::test_calculate_priority_score_no_history`）
+
+---
+
 ## 2026-02-06: NG日程タブ戻り不具合を追加修正（HTMX更新時）
 
 ### 変更内容

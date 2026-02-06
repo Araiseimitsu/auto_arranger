@@ -357,6 +357,34 @@ def run_schedule_generation(
         logger.exception("Generation error")
         return False, None, f"Unexpected Error: {str(e)}"
 
+
+def get_selected_variant_result(
+    start_date_str: str,
+    variant_index: int = 0,
+    variants: int = 1,
+    variant_top_k: int = 3,
+) -> Tuple[bool, Any, str]:
+    """指定バリアントの生成結果を返す。"""
+    success, result, message = run_schedule_generation(
+        start_date_str,
+        variants=variants,
+        variant_top_k=variant_top_k,
+    )
+    if not success:
+        return False, None, message
+
+    selected = None
+    for item in result["variants"]:
+        if item["variant_index"] == variant_index:
+            selected = item
+            break
+
+    if selected is None:
+        return False, None, "選択されたバージョンが見つかりません"
+
+    return True, {"selected": selected, "result": result}, "ok"
+
+
 def save_generated_schedule(schedule: Dict, output_filename: str = None) -> str:
     if not output_filename:
         output_filename = f"schedule_{date.today().isoformat()}.csv"

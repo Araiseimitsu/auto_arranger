@@ -921,6 +921,17 @@ tr:hover td {
     margin-bottom: 20px;
 }
 
+.variant-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.variant-actions form {
+    margin: 0;
+}
+
 .analysis-section {
     margin-top: 40px;
     border-top: 2px solid #eee;

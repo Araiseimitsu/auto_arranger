@@ -1,12 +1,21 @@
 <div class="variant-panel{% if is_active %} active{% endif %}" data-variant-panel="{{ variant.variant_index }}">
   <div class="card-header variant-header">
-    <form hx-post="/save_result" hx-target="#save-message-{{ variant.variant_index }}">
-      <input type="hidden" name="start_date" value="{{ start_date }}" />
-      <input type="hidden" name="variant_index" value="{{ variant.variant_index }}" />
-      <input type="hidden" name="variants" value="{{ variant_count }}" />
-      <input type="hidden" name="variant_top_k" value="{{ variant_top_k }}" />
-      <button type="submit" class="btn btn-primary">CSV保存</button>
-    </form>
+    <div class="variant-actions">
+      <form hx-post="/save_result" hx-target="#save-message-{{ variant.variant_index }}">
+        <input type="hidden" name="start_date" value="{{ start_date }}" />
+        <input type="hidden" name="variant_index" value="{{ variant.variant_index }}" />
+        <input type="hidden" name="variants" value="{{ variant_count }}" />
+        <input type="hidden" name="variant_top_k" value="{{ variant_top_k }}" />
+        <button type="submit" class="btn btn-primary">CSV保存</button>
+      </form>
+      <form action="/print/calendar" method="get" target="_blank">
+        <input type="hidden" name="start_date" value="{{ start_date }}" />
+        <input type="hidden" name="variant_index" value="{{ variant.variant_index }}" />
+        <input type="hidden" name="variants" value="{{ variant_count }}" />
+        <input type="hidden" name="variant_top_k" value="{{ variant_top_k }}" />
+        <button type="submit" class="btn btn-secondary">印刷用カレンダー</button>
+      </form>
+    </div>
   </div>
   <div id="save-message-{{ variant.variant_index }}"></div>
 

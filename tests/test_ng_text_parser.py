@@ -32,6 +32,10 @@ class TestNormalizeSeparators:
         result = normalize_separators("3/7.8")
         assert result == "3/7,8"
 
+    def test_period_separator_with_spaces(self):
+        result = normalize_separators("3/7. 3/8. 3/21. 3/22")
+        assert result == "3/7,3/8,3/21,3/22"
+
     def test_fullwidth_space(self):
         result = normalize_separators("2/28\u30003/1")
         assert result == "2/28,3/1"
@@ -49,6 +53,14 @@ class TestNormalizeSeparators:
         result = normalize_separators("3/7、3/8 3/9.10")
         assert "3/7" in result
         assert "3/8" in result
+
+    def test_japanese_date_notation(self):
+        result = normalize_separators("2026年3月7日、3月8日")
+        assert result == "2026/3/7,3/8"
+
+    def test_range_notation(self):
+        result = normalize_separators("3/7〜3/9")
+        assert result == "3/7~3/9"
 
 
 # --- 月省略展開 ---
@@ -115,6 +127,19 @@ class TestParseDateStrings:
     def test_invalid(self):
         result = parse_date_strings(["abc"], fiscal_year=2025)
         assert result == [None]
+
+    def test_range_same_month(self):
+        result = parse_date_strings(["3/7~3/9"], fiscal_year=2026)
+        assert result == [date(2026, 3, 7), date(2026, 3, 8), date(2026, 3, 9)]
+
+    def test_range_cross_month(self):
+        result = parse_date_strings(["3/30~4/2"], fiscal_year=2026)
+        assert result == [
+            date(2026, 3, 30),
+            date(2026, 3, 31),
+            date(2026, 4, 1),
+            date(2026, 4, 2),
+        ]
 
 
 # --- weekly展開 ---
@@ -266,6 +291,18 @@ class TestParseTextBlocks:
         assert blocks[1] == {"dates": "4/20", "names": "髙橋拓未"}
         assert blocks[2] == {"dates": "3/2、4/13", "names": "幅下孝一"}
 
+    def test_mixed_single_line_name_then_date(self):
+        text = "今井敬史 3/7,3/8"
+        blocks = parse_text_blocks(text)
+        assert len(blocks) == 1
+        assert blocks[0] == {"dates": "3/7,3/8", "names": "今井敬史"}
+
+    def test_mixed_single_line_date_then_name(self):
+        text = "3/7,3/8 今井敬史"
+        blocks = parse_text_blocks(text)
+        assert len(blocks) == 1
+        assert blocks[0] == {"dates": "3/7,3/8", "names": "今井敬史"}
+
 
 # --- 名前パース ---
 
@@ -352,3 +389,30 @@ class TestParseNgText:
             "2026-03-02",
             "2026-04-20",
         ]
+
+    def test_date_then_name_with_period_and_spaces(self):
+        members = ["今井敬史"]
+        text = "3/7. 3/8. 3/21. 3/22\n今井敬史"
+        entries = parse_ng_text(text, members, mode='daily', fiscal_year=2026)
+        assert len(entries) == 1
+        assert entries[0]["matched_name"] == "今井敬史"
+        assert entries[0]["resolved_dates"] == [
+            "2026-03-07",
+            "2026-03-08",
+            "2026-03-21",
+            "2026-03-22",
+        ]
+        assert entries[0]["selected"] is True
+
+    def test_japanese_date_and_range_notation(self):
+        members = ["今井敬史"]
+        text = "2026年3月7日〜3月9日\n今井敬史"
+        entries = parse_ng_text(text, members, mode='daily', fiscal_year=2026)
+        assert len(entries) == 1
+        assert entries[0]["matched_name"] == "今井敬史"
+        assert entries[0]["resolved_dates"] == [
+            "2026-03-07",
+            "2026-03-08",
+            "2026-03-09",
+        ]
+        assert entries[0]["selected"] is True

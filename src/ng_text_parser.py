@@ -30,6 +30,15 @@ NAME_FIELD_PATTERN = re.compile(
 DATE_FIELD_PATTERN = re.compile(
     r'^\s*(?:依頼日|日付|希望日|NG日|NG日程|不可日)\s*[:：]\s*(.+)\s*$'
 )
+DATE_LINE_PATTERN = re.compile(
+    r'('
+    r'\d{1,4}\s*[/-]\s*\d{1,2}(?:\s*[/-]\s*\d{1,2})?'
+    r'|'
+    r'\d{1,4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日?'
+    r'|'
+    r'\d{1,2}\s*月\s*\d{1,2}\s*日?'
+    r')'
+)
 
 
 def normalize_kanji(text: str) -> str:
@@ -41,14 +50,27 @@ def normalize_separators(text: str) -> str:
     """区切り文字を統一してカンマに正規化"""
     # 全角→半角変換（数字・スラッシュ・カンマ）
     text = unicodedata.normalize('NFKC', text)
+    # 曜日注釈を除去: 3/7(土), 3月7日（日） など
+    text = re.sub(r'[（(]\s*[月火水木金土日]\s*[)）]', '', text)
+    # ISO表記をスラッシュへ: 2026-03-07
+    text = re.sub(r'(\d{2,4})\s*-\s*(\d{1,2})\s*-\s*(\d{1,2})', r'\1/\2/\3', text)
+    # 日本語日付をスラッシュへ
+    text = re.sub(r'(\d{2,4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?', r'\1/\2/\3', text)
+    text = re.sub(r'(?<!\d)(\d{1,2})\s*月\s*(\d{1,2})\s*日?', r'\1/\2', text)
+    # ドット区切りの月日をスラッシュへ: 3.7 -> 3/7
+    text = re.sub(r'(?<![\d/])(\d{1,2})\s*[\.．]\s*(\d{1,2})(?![\d/])', r'\1/\2', text)
     # 読点→カンマ
-    text = text.replace('、', ',')
+    text = text.replace('、', ',').replace('，', ',').replace('；', ',').replace(';', ',')
+    # ピリオド区切り（空白あり/なし）: 「3/7. 3/8」「3/7.8」→「3/7,3/8」「3/7,8」
+    text = re.sub(r'(?<=\d)\s*[\.．。・]\s*(?=\d)', ',', text)
+    # 範囲表記を統一: 3/7-9, 3/7〜3/9, 3/7から3/9, 3/7 to 3/9 -> 3/7~...
+    text = re.sub(r'(?<=\d)\s*(?:〜|～|−|－|ー|―|~|から|to)\s*(?=\d)', '~', text, flags=re.IGNORECASE)
+    text = re.sub(r'(?<=\d)\s*-\s*(?=\d)', '~', text)
     # 全角/半角スペースをカンマに（日付間の区切りとして）
     # ただし「月/日 月/日」のパターンのみ変換
     text = re.sub(r'(\d)\s+(\d)', r'\1,\2', text)
-    # ピリオド区切り: 「3/7.8」→「3/7,8」
-    text = re.sub(r'(\d)\.(\d)', r'\1,\2', text)
-    return text.strip()
+    text = re.sub(r',\s*,+', ',', text)
+    return text.strip(' ,')
 
 
 def expand_month_abbreviations(text: str) -> List[str]:
@@ -69,31 +91,56 @@ def expand_month_abbreviations(text: str) -> List[str]:
     current_month: Optional[str] = None
 
     for part in parts:
-        if '/' in part:
-            segments = [s.strip() for s in part.split('/')]
+        if "~" in part:
+            start_token, end_token = [p.strip() for p in part.split("~", 1)]
+            start_normalized, current_year, current_month = _normalize_date_fragment(
+                start_token, current_year, current_month, allow_day_only=False
+            )
+            end_normalized, current_year, current_month = _normalize_date_fragment(
+                end_token, current_year, current_month, allow_day_only=True
+            )
+            if start_normalized and end_normalized:
+                result.append(f"{start_normalized}~{end_normalized}")
+            continue
 
-            # YYYY/M/D
-            if len(segments) == 3:
-                current_year, current_month, day_part = segments
-                result.append(f"{current_year}/{current_month}/{day_part}")
-                continue
-
-            # M/D
-            if len(segments) == 2:
-                current_month, day_part = segments
-                if current_year is not None:
-                    result.append(f"{current_year}/{current_month}/{day_part}")
-                else:
-                    result.append(f"{current_month}/{day_part}")
-                continue
-
-        if current_month and part.isdigit():
-            if current_year is not None:
-                result.append(f"{current_year}/{current_month}/{part}")
-            else:
-                result.append(f"{current_month}/{part}")
+        normalized, current_year, current_month = _normalize_date_fragment(
+            part, current_year, current_month, allow_day_only=True
+        )
+        if normalized:
+            result.append(normalized)
 
     return result
+
+
+def _normalize_date_fragment(
+    fragment: str,
+    current_year: Optional[str],
+    current_month: Optional[str],
+    *,
+    allow_day_only: bool,
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    token = fragment.strip()
+    if not token:
+        return None, current_year, current_month
+
+    if '/' in token:
+        segments = [s.strip() for s in token.split('/')]
+        if len(segments) == 3 and all(seg.isdigit() for seg in segments):
+            y, m, d = segments
+            return f"{y}/{m}/{d}", y, m
+        if len(segments) == 2 and all(seg.isdigit() for seg in segments):
+            m, d = segments
+            if current_year is not None:
+                return f"{current_year}/{m}/{d}", current_year, m
+            return f"{m}/{d}", current_year, m
+        return None, current_year, current_month
+
+    if allow_day_only and token.isdigit() and current_month:
+        if current_year is not None:
+            return f"{current_year}/{current_month}/{token}", current_year, current_month
+        return f"{current_month}/{token}", current_year, current_month
+
+    return None, current_year, current_month
 
 
 def resolve_year(month: int, day: int, year: int) -> Optional[date]:
@@ -150,6 +197,79 @@ def _parse_date_token(token: str) -> Tuple[Optional[int], Optional[int], Optiona
     return None, None, None
 
 
+def _resolve_single_date_token(
+    token: str,
+    current_year: int,
+    previous_month: Optional[int],
+) -> Tuple[Optional[date], int, Optional[int]]:
+    raw_year, month, day = _parse_date_token(token)
+    if month is None or day is None:
+        return None, current_year, previous_month
+
+    resolved_year = current_year
+    if raw_year is not None:
+        resolved_year = _normalize_year(raw_year)
+    elif previous_month is not None and _is_year_rollover(previous_month, month):
+        resolved_year = current_year + 1
+
+    resolved = resolve_year(month, day, resolved_year)
+    if resolved is None:
+        return None, current_year, previous_month
+
+    return resolved, resolved.year, resolved.month
+
+
+def _expand_date_range(start_date: date, end_date: date) -> Optional[List[date]]:
+    if end_date < start_date:
+        return None
+    span = (end_date - start_date).days
+    # 入力ミスでの過剰展開を防止（最大63日）
+    if span > 62:
+        return None
+    return [start_date + timedelta(days=i) for i in range(span + 1)]
+
+
+def _resolve_range_token(
+    token: str,
+    current_year: int,
+    previous_month: Optional[int],
+) -> Tuple[Optional[List[date]], int, Optional[int]]:
+    if "~" not in token:
+        return None, current_year, previous_month
+
+    start_token, end_token = [p.strip() for p in token.split("~", 1)]
+    start_date, updated_year, updated_prev_month = _resolve_single_date_token(
+        start_token, current_year, previous_month
+    )
+    if start_date is None:
+        return None, current_year, previous_month
+
+    parsed_end = _parse_date_token(end_token)
+    if parsed_end == (None, None, None) and end_token.isdigit():
+        end_token = f"{start_date.year}/{start_date.month}/{end_token}"
+
+    end_date, _, _ = _resolve_single_date_token(
+        end_token,
+        start_date.year,
+        start_date.month,
+    )
+    if end_date is None:
+        return None, current_year, previous_month
+
+    if end_date < start_date:
+        raw_year, month, day = _parse_date_token(end_token)
+        if raw_year is None and month is not None and day is not None:
+            candidate = resolve_year(month, day, start_date.year + 1)
+            if candidate is not None:
+                end_date = candidate
+
+    expanded = _expand_date_range(start_date, end_date)
+    if expanded is None:
+        return None, current_year, previous_month
+
+    return expanded, end_date.year, end_date.month
+
+
 def parse_date_strings(
     date_strings: List[str], fiscal_year: int
 ) -> List[Optional[date]]:
@@ -163,21 +283,20 @@ def parse_date_strings(
     previous_month: Optional[int] = None
 
     for ds in date_strings:
-        raw_year, month, day = _parse_date_token(ds)
-        if month is None or day is None:
-            results.append(None)
+        range_dates, current_year, previous_month = _resolve_range_token(
+            ds, current_year, previous_month
+        )
+        if range_dates is not None:
+            results.extend(range_dates)
             continue
 
-        if raw_year is not None:
-            current_year = _normalize_year(raw_year)
-        elif previous_month is not None and _is_year_rollover(previous_month, month):
-            current_year += 1
-
-        resolved = resolve_year(month, day, current_year)
+        resolved, current_year, previous_month = _resolve_single_date_token(
+            ds, current_year, previous_month
+        )
+        if resolved is None:
+            results.append(None)
+            continue
         results.append(resolved)
-
-        if resolved is not None:
-            previous_month = month
 
     return results
 
@@ -250,7 +369,7 @@ def fuzzy_match_name(
 
 def _is_date_line(line: str) -> bool:
     """日付を含む行かどうか判定"""
-    return bool(re.search(r'\d+\s*/\s*\d+', line))
+    return bool(DATE_LINE_PATTERN.search(line))
 
 
 def _extract_labeled_value(line: str, pattern: re.Pattern) -> Optional[str]:
@@ -281,9 +400,56 @@ def _normalize_input_lines(text: str) -> List[str]:
         if NAME_LABEL_PATTERN.match(line) or DATE_LABEL_PATTERN.match(line):
             continue
 
-        normalized.append(line)
+        mixed = _split_mixed_line(line)
+        if mixed:
+            normalized.extend(mixed)
+        else:
+            normalized.append(line)
 
     return normalized
+
+
+def _split_mixed_line(line: str) -> List[str]:
+    """1行に日付と名前が混在するケースを分割する。"""
+    stripped = line.strip()
+    if not stripped:
+        return []
+    if not _is_date_line(stripped):
+        return [stripped]
+
+    has_japanese = bool(re.search(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]', stripped))
+    if not has_japanese:
+        return [stripped]
+
+    chunks = [c for c in re.split(r'\s+', stripped) if c]
+    if len(chunks) < 2:
+        return [stripped]
+
+    for idx in range(1, len(chunks)):
+        left = " ".join(chunks[:idx]).strip(" ,，")
+        right = " ".join(chunks[idx:]).strip(" ,，")
+        if _looks_like_date_text(left) and _looks_like_name_text(right):
+            return [left, right]
+        if _looks_like_name_text(left) and _looks_like_date_text(right):
+            return [left, right]
+
+    return [stripped]
+
+
+def _looks_like_date_text(text: str) -> bool:
+    value = text.strip()
+    if not value:
+        return False
+    return _is_date_line(value)
+
+
+def _looks_like_name_text(text: str) -> bool:
+    value = text.strip()
+    if not value:
+        return False
+    if _is_date_line(value):
+        return False
+    return bool(re.search(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]', value))
 
 
 def _is_name_line(line: str) -> bool:
