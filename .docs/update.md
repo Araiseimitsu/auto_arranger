@@ -4,6 +4,99 @@
 
 ---
 
+## 2026-02-06: NG日程タブ戻り不具合を追加修正（HTMX更新時）
+
+### 変更内容
+- `web/templates/components/ng_dates_form.html` の NG 操作フォームを `hx-swap="outerHTML"` に統一し、`#ng-dates-container` の入れ子化を防止
+- 一括適用 (`htmx.ajax`) も `swap: 'outerHTML'` に変更
+- `web/static/js/app.js` に `htmx:afterSwap` フックを追加し、NG画面更新後に `restoreNgTab()` を再実行して選択タブを維持
+- `web/templates/base.html` の JS バージョンを更新してキャッシュ影響を回避
+- `web/routes.py` と `web/templates/components/ng_dates_form.html` を更新し、各NG操作で `active_tab` を送信・再描画時に同タブをサーバー側で復元する方式へ変更（クライアント依存を排除）
+
+### 変更ファイル
+- `web/templates/components/ng_dates_form.html`
+- `web/static/js/app.js`
+- `web/templates/base.html`
+- `web/routes.py`
+
+---
+
+## 2026-02-06: 結果画面に設定NGデータを常時表示
+
+### 変更内容
+- `src/ng_status_view.py` を拡張し、担当者に未割当のNGでも日付/週に設定NGがあれば `設定NG` ラベルを表示するよう変更
+- これにより、スケジュールが制約を満たして担当者NGが0件でも「その日に登録されているNG設定」を結果画面で確認可能に改善
+- `web/static/css/style.css` に `設定NG` チップ (`.ng-chip-setting`) のスタイルを追加
+- `tests/test_ng_status_view.py` に、非担当者NGを表示する回帰テストを追加
+
+### 変更ファイル
+- `src/ng_status_view.py`
+- `web/static/css/style.css`
+- `tests/test_ng_status_view.py`
+
+### テスト
+- `py -3 -m pytest tests/test_ng_status_view.py -q`（5 passed）
+- `py -3 -m pytest -q`（既存テスト1件失敗: `tests/test_schedule_builder.py::test_calculate_priority_score_no_history`）
+
+---
+
+## 2026-02-06: NG日程サブタブの選択状態を保持
+
+### 変更内容
+- `web/templates/components/ng_dates_form.html` のサブタブに `data-ng-tab` を追加
+- タブ切替ロジックを `sessionStorage` ベースに変更し、HTMX再描画後も直前に開いていたサブタブを復元
+- NG追加/削除/一括登録/詳細編集の実行後に、先頭タブへ戻らず同じタブを維持するよう改善
+
+### 変更ファイル
+- `web/templates/components/ng_dates_form.html`
+
+---
+
+## 2026-02-06: NG一括登録の日付年判定を改善（年未指定・年跨ぎ対応）
+
+### 変更内容
+- `src/ng_text_parser.py` の年解釈を「年度固定」から「基準年 + 年跨ぎ自動判定」に変更
+- 年未指定 (`M/D`) は基準年で解釈し、`12月→1月` などの遷移を入力順から翌年へ自動繰り上げ
+- `2/23,3/2,4/20` のような並びは同一年として扱い、意図しない `2026/2027` 混在を防止
+- `YYYY/M/D` の明示年入力に対応し、同一行内の月省略（例: `2026/12/28,29`）も展開可能に
+- 基準年選択UIの文言を `年度` から `基準年` に変更し、年跨ぎルールの説明を追加
+
+### 変更ファイル
+- `src/ng_text_parser.py`
+- `tests/test_ng_text_parser.py`
+- `web/templates/components/ng_dates_form.html`
+
+### テスト
+- `py -3 -m pytest tests/test_ng_text_parser.py -q`（54 passed）
+- `py -3 -m pytest -q`（既存テスト1件失敗: `tests/test_schedule_builder.py::test_calculate_priority_score_no_history`）
+
+---
+
+## 2026-02-06: 結果画面のNG可視化UIを強化
+
+### 変更内容
+- 結果表示用に `src/ng_status_view.py` を追加し、日勤（日付単位）/夜勤（週単位）の `global`・`by_member`・`by_period` NG情報を行単位で集約
+- `web/services.py` のスケジュール生成結果に `ng_status` を付与し、テンプレート側でNG情報を直接参照可能に変更
+- `web/templates/components/schedule_variant.html` に `NG確認` 列を追加し、各行でNG種別（全体NG/個別NG/期間NG）をチップ表示
+- 同テンプレートに `全件 / NGありのみ` フィルタとNG確認サマリーを追加し、確認作業を短縮
+- `web/static/css/style.css` と `web/static/js/app.js` に、NG行ハイライトとフィルタ動作用のスタイル/スクリプトを追加
+- ブラウザキャッシュ対策として `web/templates/base.html` の静的アセットバージョンを更新
+
+### 変更ファイル
+- `src/ng_status_view.py`
+- `web/services.py`
+- `web/templates/components/schedule_variant.html`
+- `web/static/css/style.css`
+- `web/static/js/app.js`
+- `web/templates/base.html`
+- `tests/test_ng_status_view.py`
+
+### テスト
+- `py -3 -m pytest tests/test_ng_status_view.py -q`（3 passed）
+- `py -3 -m pytest -q`（既存テスト1件失敗: `tests/test_schedule_builder.py::test_calculate_priority_score_no_history`）
+
+---
+
 ## 2026-02-06: EXE起動時のタスクバーアイコン反映を強化
 
 ### 変更内容

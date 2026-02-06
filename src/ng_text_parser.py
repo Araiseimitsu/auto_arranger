@@ -54,54 +54,131 @@ def normalize_separators(text: str) -> str:
 def expand_month_abbreviations(text: str) -> List[str]:
     """月省略を展開して日付文字列リストを返す
 
+    対応:
+    - M/D 形式
+    - YYYY/M/D 形式
+    - 月・年の省略（前要素を継承）
+
     例: "3/7,8,28,29" → ["3/7", "3/8", "3/28", "3/29"]
     例: "3/7,4/1,2" → ["3/7", "4/1", "4/2"]
+    例: "2026/12/28,29,2027/1/4" → ["2026/12/28", "2026/12/29", "2027/1/4"]
     """
     parts = [p.strip() for p in text.split(',') if p.strip()]
     result = []
-    current_month = None
+    current_year: Optional[str] = None
+    current_month: Optional[str] = None
 
     for part in parts:
         if '/' in part:
-            # 月/日の形式
-            segments = part.split('/')
-            current_month = segments[0]
-            result.append(f"{current_month}/{segments[1]}")
-        elif current_month and part.isdigit():
-            result.append(f"{current_month}/{part}")
+            segments = [s.strip() for s in part.split('/')]
+
+            # YYYY/M/D
+            if len(segments) == 3:
+                current_year, current_month, day_part = segments
+                result.append(f"{current_year}/{current_month}/{day_part}")
+                continue
+
+            # M/D
+            if len(segments) == 2:
+                current_month, day_part = segments
+                if current_year is not None:
+                    result.append(f"{current_year}/{current_month}/{day_part}")
+                else:
+                    result.append(f"{current_month}/{day_part}")
+                continue
+
+        if current_month and part.isdigit():
+            if current_year is not None:
+                result.append(f"{current_year}/{current_month}/{part}")
+            else:
+                result.append(f"{current_month}/{part}")
 
     return result
 
 
-def resolve_year(month: int, day: int, fiscal_year: int) -> Optional[date]:
-    """年度から実際の年を推定
-
-    年度規則: 4-12月=fiscal_year年、1-3月=fiscal_year+1年
-    """
-    if 4 <= month <= 12:
-        year = fiscal_year
-    else:
-        year = fiscal_year + 1
+def resolve_year(month: int, day: int, year: int) -> Optional[date]:
+    """年・月・日からdateを生成（不正日付はNone）。"""
     try:
         return date(year, month, day)
     except ValueError:
         return None
 
 
+def _is_year_rollover(previous_month: int, current_month: int) -> bool:
+    """年跨ぎとみなす月遷移かを判定する。
+
+    12月→1月などは翌年に進める。
+    入力順が不規則なケースで過剰に翌年化しないよう、一定条件でのみ判定する。
+    """
+    if current_month >= previous_month:
+        return False
+
+    if previous_month >= 10 and current_month <= 3:
+        return True
+
+    if previous_month - current_month >= 6:
+        return True
+
+    return False
+
+
+def _normalize_year(raw_year: int) -> int:
+    """2桁年は2000年代として補完する。"""
+    if raw_year < 100:
+        return 2000 + raw_year
+    return raw_year
+
+
+def _parse_date_token(token: str) -> Tuple[Optional[int], Optional[int], Optional[int]]:
+    """日付トークンを (year, month, day) へ分解する。
+
+    year は未指定時 None。
+    """
+    try:
+        segments = [int(s.strip()) for s in token.split('/')]
+    except ValueError:
+        return None, None, None
+
+    if len(segments) == 3:
+        y, m, d = segments
+        return y, m, d
+
+    if len(segments) == 2:
+        m, d = segments
+        return None, m, d
+
+    return None, None, None
+
+
 def parse_date_strings(
     date_strings: List[str], fiscal_year: int
 ) -> List[Optional[date]]:
-    """月/日文字列リストをdateオブジェクトに変換"""
+    """日付文字列リストをdateオブジェクトに変換する。
+
+    年未指定（M/D）は、fiscal_year を基準年として解釈し、
+    12月→1月などの年跨ぎを入力順から自動判定する。
+    """
     results = []
+    current_year = fiscal_year
+    previous_month: Optional[int] = None
+
     for ds in date_strings:
-        try:
-            parts = ds.split('/')
-            month = int(parts[0])
-            day = int(parts[1])
-            resolved = resolve_year(month, day, fiscal_year)
-            results.append(resolved)
-        except (ValueError, IndexError):
+        raw_year, month, day = _parse_date_token(ds)
+        if month is None or day is None:
             results.append(None)
+            continue
+
+        if raw_year is not None:
+            current_year = _normalize_year(raw_year)
+        elif previous_month is not None and _is_year_rollover(previous_month, month):
+            current_year += 1
+
+        resolved = resolve_year(month, day, current_year)
+        results.append(resolved)
+
+        if resolved is not None:
+            previous_month = month
+
     return results
 
 
@@ -296,7 +373,7 @@ def parse_ng_text(
         text: パース対象のフリーテキスト
         known_members: settings.yamlから取得したメンバー名リスト
         mode: 'daily'(個別日付) / 'weekly'(月曜→7日間展開)
-        fiscal_year: 年度（Noneの場合、現在の年度を使用）
+        fiscal_year: 基準年（Noneの場合、現在年を使用）
 
     Returns: [
         {
@@ -311,8 +388,7 @@ def parse_ng_text(
     ]
     """
     if fiscal_year is None:
-        today = date.today()
-        fiscal_year = today.year if today.month >= 4 else today.year - 1
+        fiscal_year = date.today().year
 
     blocks = parse_text_blocks(text)
     entries = []

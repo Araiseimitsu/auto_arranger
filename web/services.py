@@ -12,6 +12,7 @@ from src.schedule_builder import ScheduleBuilder
 from src.schedule_analyzer import ScheduleAnalyzer
 from src.output_formatter import OutputFormatter
 from src.ng_text_parser import parse_ng_text
+from src.ng_status_view import build_ng_status_for_schedule
 from utils.date_utils import get_rotation_period
 from utils.logger import setup_logger
 
@@ -296,6 +297,8 @@ def run_schedule_generation(
             lookback_months=2
         )
 
+        ng_dates = load_ng_dates()
+
         variant_count = max(1, int(variants))
         variant_top_k = max(1, int(variant_top_k))
 
@@ -319,12 +322,14 @@ def run_schedule_generation(
                 statistics = formatter.generate_statistics(schedule, member_stats)
                 analyzer = ScheduleAnalyzer(schedule, member_stats)
                 analysis_result = analyzer.analyze()
+                ng_status = build_ng_status_for_schedule(schedule, ng_dates)
 
                 variant_results.append({
                     'variant_index': variant_index,
                     'schedule': schedule,
                     'statistics': statistics,
-                    'analysis': analysis_result
+                    'analysis': analysis_result,
+                    'ng_status': ng_status,
                 })
             except ValueError as e:
                 failures.append({

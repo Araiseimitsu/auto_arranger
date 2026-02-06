@@ -74,23 +74,21 @@ class TestExpandMonthAbbreviations:
         result = expand_month_abbreviations("")
         assert result == []
 
+    def test_explicit_year_and_abbreviation(self):
+        result = expand_month_abbreviations("2026/12/28,29,2027/1/4")
+        assert result == ["2026/12/28", "2026/12/29", "2027/1/4"]
+
 
 # --- 年推定 ---
 
 class TestResolveYear:
-    def test_april_to_december_uses_fiscal_year(self):
+    def test_valid_date(self):
         d = resolve_year(4, 1, 2025)
         assert d == date(2025, 4, 1)
 
+    def test_valid_date_end_of_year(self):
         d = resolve_year(12, 31, 2025)
         assert d == date(2025, 12, 31)
-
-    def test_january_to_march_uses_next_year(self):
-        d = resolve_year(1, 15, 2025)
-        assert d == date(2026, 1, 15)
-
-        d = resolve_year(3, 31, 2025)
-        assert d == date(2026, 3, 31)
 
     def test_invalid_date_returns_none(self):
         d = resolve_year(2, 30, 2025)
@@ -100,11 +98,19 @@ class TestResolveYear:
 class TestParseDateStrings:
     def test_basic(self):
         result = parse_date_strings(["3/7", "3/8"], fiscal_year=2025)
-        assert result == [date(2026, 3, 7), date(2026, 3, 8)]
+        assert result == [date(2025, 3, 7), date(2025, 3, 8)]
 
-    def test_cross_fiscal_year(self):
-        result = parse_date_strings(["12/25", "1/10"], fiscal_year=2025)
-        assert result == [date(2025, 12, 25), date(2026, 1, 10)]
+    def test_cross_year_by_month_rollover(self):
+        result = parse_date_strings(["12/25", "1/10"], fiscal_year=2026)
+        assert result == [date(2026, 12, 25), date(2027, 1, 10)]
+
+    def test_no_rollover_for_small_reverse(self):
+        result = parse_date_strings(["4/20", "3/23"], fiscal_year=2026)
+        assert result == [date(2026, 4, 20), date(2026, 3, 23)]
+
+    def test_explicit_year(self):
+        result = parse_date_strings(["2026/12/25", "2027/1/10"], fiscal_year=2025)
+        assert result == [date(2026, 12, 25), date(2027, 1, 10)]
 
     def test_invalid(self):
         result = parse_date_strings(["abc"], fiscal_year=2025)
@@ -289,7 +295,7 @@ class TestParseNgText:
 
     def test_daily_mode(self, members):
         text = "丸岡、大関\n3/7,8"
-        entries = parse_ng_text(text, members, mode='daily', fiscal_year=2025)
+        entries = parse_ng_text(text, members, mode='daily', fiscal_year=2026)
         assert len(entries) == 2
         # 丸岡
         assert entries[0]["matched_name"] == "丸岡"
@@ -300,35 +306,49 @@ class TestParseNgText:
 
     def test_weekly_mode(self, members):
         text = "松田\n3/2"
-        entries = parse_ng_text(text, members, mode='weekly', fiscal_year=2025)
+        entries = parse_ng_text(text, members, mode='weekly', fiscal_year=2026)
         assert len(entries) == 1
         # 月曜日3/2から7日間展開
         assert len(entries[0]["resolved_dates"]) == 7
 
     def test_unknown_name(self, members):
         text = "XXXXX\n3/7"
-        entries = parse_ng_text(text, members, mode='daily', fiscal_year=2025)
+        entries = parse_ng_text(text, members, mode='daily', fiscal_year=2026)
         assert len(entries) == 1
         assert entries[0]["confidence"] < 0.7
         assert entries[0]["selected"] is False
 
     def test_fullname_resolution(self, members):
         text = "新井翔太\n3/7"
-        entries = parse_ng_text(text, members, mode='daily', fiscal_year=2025)
+        entries = parse_ng_text(text, members, mode='daily', fiscal_year=2026)
         assert entries[0]["matched_name"] == "新井翔"
         assert entries[0]["confidence"] >= 0.9
 
     def test_multiple_blocks(self, members):
         text = "丸岡\n3/7,8\n塩田、高橋良\n4/1,2,3"
-        entries = parse_ng_text(text, members, mode='daily', fiscal_year=2025)
+        entries = parse_ng_text(text, members, mode='daily', fiscal_year=2026)
         assert len(entries) == 3
         assert entries[0]["matched_name"] == "丸岡"
         assert entries[1]["matched_name"] == "塩田"
         assert entries[2]["matched_name"] == "高橋良"
 
-    def test_fiscal_year_auto_detection(self, members):
-        """fiscal_year=Noneで自動推定"""
+    def test_base_year_auto_detection(self, members):
+        """fiscal_year=Noneで現在年を基準に推定"""
         text = "丸岡\n3/7"
         entries = parse_ng_text(text, members, mode='daily')
         assert len(entries) == 1
         assert len(entries[0]["resolved_dates"]) > 0
+
+    def test_year_boundary_without_yyyy(self, members):
+        text = "丸岡\n12/28,1/4"
+        entries = parse_ng_text(text, members, mode='daily', fiscal_year=2026)
+        assert entries[0]["resolved_dates"] == ["2026-12-28", "2027-01-04"]
+
+    def test_same_year_without_yyyy_for_feb_to_apr(self, members):
+        text = "丸岡\n2/23,3/2,4/20"
+        entries = parse_ng_text(text, members, mode='daily', fiscal_year=2026)
+        assert entries[0]["resolved_dates"] == [
+            "2026-02-23",
+            "2026-03-02",
+            "2026-04-20",
+        ]

@@ -118,6 +118,53 @@ document.addEventListener('click', (event) => {
     });
 });
 
+// NG table filtering (event delegation for HTMX swaps)
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('.ng-filter-btn');
+    if (!button) return;
+
+    const tableId = button.getAttribute('data-ng-table');
+    const filterMode = button.getAttribute('data-ng-filter');
+    if (!tableId || !filterMode) return;
+
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    const group = button.closest('[data-ng-filter-group]');
+    if (group) {
+        group.querySelectorAll('.ng-filter-btn').forEach((item) => {
+            item.classList.remove('active');
+        });
+    }
+    button.classList.add('active');
+
+    const rows = table.querySelectorAll('tbody tr[data-ng-row]');
+    let visibleCount = 0;
+    rows.forEach((row) => {
+        const hasNg = row.getAttribute('data-ng-row') === 'true';
+        const shouldShow = filterMode === 'all' || hasNg;
+        row.classList.toggle('hidden', !shouldShow);
+        if (shouldShow) {
+            visibleCount += 1;
+        }
+    });
+
+    const emptyRow = table.querySelector('tbody tr.ng-filter-empty');
+    if (emptyRow) {
+        const showEmpty = filterMode === 'ng' && visibleCount === 0;
+        emptyRow.classList.toggle('hidden', !showEmpty);
+    }
+});
+
+// Keep NG sub-tab after HTMX refresh
+document.body.addEventListener('htmx:afterSwap', (event) => {
+    const target = event.detail && event.detail.target;
+    if (!target || target.id !== 'ng-dates-container') return;
+    if (typeof window.restoreNgTab === 'function') {
+        window.restoreNgTab();
+    }
+});
+
 // Member modal management
 let currentMemberName = "";
 

@@ -12,15 +12,15 @@
 
     <!-- Sub-tabs for NG Dates -->
     <div style="display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 1px solid #e5e5e5; padding-bottom: 8px;">
-        <button class="btn-tab active" onclick="switchNgTab(this, 'ng-global')">全体NG (祝日等)</button>
-        <button class="btn-tab" onclick="switchNgTab(this, 'ng-member')">メンバーNG</button>
-        <button class="btn-tab" onclick="switchNgTab(this, 'ng-period')">期間NG</button>
-        <button class="btn-tab" onclick="switchNgTab(this, 'ng-bulk')">一括登録</button>
-        <button class="btn-tab" onclick="switchNgTab(this, 'ng-advanced')">詳細編集 (YAML)</button>
+        <button class="btn-tab{% if active_tab == 'ng-global' %} active{% endif %}" data-ng-tab="ng-global" onclick="return switchNgTab(this, 'ng-global')">全体NG (祝日等)</button>
+        <button class="btn-tab{% if active_tab == 'ng-member' %} active{% endif %}" data-ng-tab="ng-member" onclick="return switchNgTab(this, 'ng-member')">メンバーNG</button>
+        <button class="btn-tab{% if active_tab == 'ng-period' %} active{% endif %}" data-ng-tab="ng-period" onclick="return switchNgTab(this, 'ng-period')">期間NG</button>
+        <button class="btn-tab{% if active_tab == 'ng-bulk' %} active{% endif %}" data-ng-tab="ng-bulk" onclick="return switchNgTab(this, 'ng-bulk')">一括登録</button>
+        <button class="btn-tab{% if active_tab == 'ng-advanced' %} active{% endif %}" data-ng-tab="ng-advanced" onclick="return switchNgTab(this, 'ng-advanced')">詳細編集 (YAML)</button>
     </div>
 
     <!-- Global NG Section -->
-    <div id="ng-global" class="ng-section animate-fade-in">
+    <div id="ng-global" class="ng-section{% if active_tab != 'ng-global' %} hidden{% endif %} animate-fade-in">
         <div class="flex-row">
             <div style="flex: 1; min-width: 250px;">
                 <h4 class="member-group-title">登録済み日付</h4>
@@ -28,8 +28,9 @@
                     {% for date in ng_dates.global|sort %}
                     <li class="ng-list-item">
                         <span>{{ date }}</span>
-                        <form hx-post="/ng_dates/global/remove" hx-target="#ng-dates-container" style="margin:0;">
+                        <form hx-post="/ng_dates/global/remove" hx-target="#ng-dates-container" hx-swap="outerHTML" style="margin:0;">
                             <input type="hidden" name="date" value="{{ date }}">
+                            <input type="hidden" name="active_tab" value="ng-global">
                             <button type="submit" class="btn-icon-remove" title="削除">✕</button>
                         </form>
                     </li>
@@ -40,7 +41,8 @@
             </div>
             <div class="settings-block" style="flex: 1; min-width: 250px; height: fit-content;">
                 <h4 class="member-group-title" style="margin-bottom: 16px;">新規追加</h4>
-                <form hx-post="/ng_dates/global/add" hx-target="#ng-dates-container">
+                <form hx-post="/ng_dates/global/add" hx-target="#ng-dates-container" hx-swap="outerHTML">
+                    <input type="hidden" name="active_tab" value="ng-global">
                     <div class="form-group">
                         <label>日付</label>
                         <input type="date" name="date" required>
@@ -52,7 +54,7 @@
     </div>
 
     <!-- Member NG Section -->
-    <div id="ng-member" class="ng-section hidden animate-fade-in">
+    <div id="ng-member" class="ng-section{% if active_tab != 'ng-member' %} hidden{% endif %} animate-fade-in">
         <div class="flex-row">
             <div style="flex: 1; min-width: 250px;">
                 <h4 class="member-group-title">メンバー別NG一覧</h4>
@@ -64,9 +66,10 @@
                                 {% for date in dates|sort %}
                                 <li class="ng-list-item" style="border-bottom: 1px dashed #eee;">
                                     <span>{{ date }}</span>
-                                    <form hx-post="/ng_dates/member/remove" hx-target="#ng-dates-container" style="margin:0;">
+                                    <form hx-post="/ng_dates/member/remove" hx-target="#ng-dates-container" hx-swap="outerHTML" style="margin:0;">
                                         <input type="hidden" name="member" value="{{ member }}">
                                         <input type="hidden" name="date" value="{{ date }}">
+                                        <input type="hidden" name="active_tab" value="ng-member">
                                         <button type="submit" class="btn-icon-remove" title="削除">✕</button>
                                     </form>
                                 </li>
@@ -80,7 +83,8 @@
             </div>
             <div class="settings-block" style="flex: 1; min-width: 250px; height: fit-content;">
                 <h4 class="member-group-title" style="margin-bottom: 16px;">新規追加</h4>
-                <form hx-post="/ng_dates/member/add" hx-target="#ng-dates-container">
+                <form hx-post="/ng_dates/member/add" hx-target="#ng-dates-container" hx-swap="outerHTML">
+                    <input type="hidden" name="active_tab" value="ng-member">
                     <div class="form-group">
                         <label>メンバー</label>
                         <select name="member" required>
@@ -101,7 +105,7 @@
     </div>
 
     <!-- Period NG Section -->
-    <div id="ng-period" class="ng-section hidden animate-fade-in">
+    <div id="ng-period" class="ng-section{% if active_tab != 'ng-period' %} hidden{% endif %} animate-fade-in">
         <div class="flex-row">
             <div style="flex: 2; min-width: 300px;">
                 <h4 class="member-group-title">期間NG設定</h4>
@@ -123,9 +127,10 @@
                                     <td>{{ p.start }} ～ {{ p.end }}</td>
                                     <td>{{ p.reason }}</td>
                                     <td style="text-align: center;">
-                                        <form hx-post="/ng_dates/period/remove" hx-target="#ng-dates-container" style="margin:0;">
+                                        <form hx-post="/ng_dates/period/remove" hx-target="#ng-dates-container" hx-swap="outerHTML" style="margin:0;">
                                             <input type="hidden" name="member" value="{{ member }}">
                                             <input type="hidden" name="start" value="{{ p.start }}">
+                                            <input type="hidden" name="active_tab" value="ng-period">
                                             <button type="submit" class="btn-icon-remove" title="削除">✕</button>
                                         </form>
                                     </td>
@@ -140,7 +145,8 @@
             </div>
             <div class="settings-block" style="flex: 1; min-width: 250px; height: fit-content;">
                 <h4 class="member-group-title" style="margin-bottom: 16px;">新規追加</h4>
-                <form hx-post="/ng_dates/period/add" hx-target="#ng-dates-container">
+                <form hx-post="/ng_dates/period/add" hx-target="#ng-dates-container" hx-swap="outerHTML">
+                    <input type="hidden" name="active_tab" value="ng-period">
                     <div class="form-group">
                         <label>メンバー</label>
                         <select name="member" required>
@@ -169,7 +175,7 @@
     </div>
 
     <!-- Bulk Import Section -->
-    <div id="ng-bulk" class="ng-section hidden animate-fade-in">
+    <div id="ng-bulk" class="ng-section{% if active_tab != 'ng-bulk' %} hidden{% endif %} animate-fade-in">
         <div class="flex-row">
             <div class="settings-block" style="flex: 1; min-width: 300px;">
                 <h4 class="member-group-title" style="margin-bottom: 16px;">テキスト貼り付け</h4>
@@ -185,13 +191,16 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>年度</label>
+                    <label>基準年</label>
                     <select id="bulk-fiscal-year">
                         {% set cy = current_year|default(2025) %}
-                        <option value="{{ cy - 1 }}">{{ cy - 1 }}年度</option>
-                        <option value="{{ cy }}" selected>{{ cy }}年度</option>
-                        <option value="{{ cy + 1 }}">{{ cy + 1 }}年度</option>
+                        <option value="{{ cy - 1 }}">{{ cy - 1 }}年</option>
+                        <option value="{{ cy }}" selected>{{ cy }}年</option>
+                        <option value="{{ cy + 1 }}">{{ cy + 1 }}年</option>
                     </select>
+                    <p class="form-hint">
+                        年未指定(M/D)は基準年で解釈し、12月→1月などの年跨ぎは自動で翌年にします。
+                    </p>
                 </div>
                 <div class="form-group">
                     <label>テキスト</label>
@@ -214,8 +223,9 @@
     </div>
 
     <!-- Advanced (YAML) Section -->
-    <div id="ng-advanced" class="ng-section hidden animate-fade-in">
-        <form hx-post="/ng_dates/update" hx-target="#ng-dates-container">
+    <div id="ng-advanced" class="ng-section{% if active_tab != 'ng-advanced' %} hidden{% endif %} animate-fade-in">
+        <form hx-post="/ng_dates/update" hx-target="#ng-dates-container" hx-swap="outerHTML">
+            <input type="hidden" name="active_tab" value="ng-advanced">
             <p class="form-hint" style="margin-bottom: 12px;">
                 YAML形式で直接編集します（上級者向け）。
             </p>
@@ -229,21 +239,32 @@
     </div>
 
     <script>
-        function switchNgTab(btn, targetId) {
+        function activateNgTab(targetId) {
             const container = document.getElementById('ng-dates-container');
-            container.querySelectorAll('.btn-tab').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+            if (!container) return;
 
+            container.querySelectorAll('.btn-tab').forEach(b => b.classList.remove('active'));
             container.querySelectorAll('.ng-section').forEach(s => {
                 s.classList.add('hidden');
             });
 
+            const targetBtn = container.querySelector(`.btn-tab[data-ng-tab="${targetId}"]`);
+            if (!targetBtn) return;
+            targetBtn.classList.add('active');
+
             const target = document.getElementById(targetId);
+            if (!target) return;
             target.classList.remove('hidden');
             target.classList.remove('animate-fade-in');
             void target.offsetWidth;
             target.classList.add('animate-fade-in');
         }
+
+        function switchNgTab(btn, targetId) {
+            activateNgTab(targetId);
+            return false;
+        }
+        window.restoreNgTab = function () { /* no-op: server side keeps active tab */ };
 
         function previewBulkNg() {
             const text = document.getElementById('bulk-text').value;
@@ -273,7 +294,11 @@
 
             htmx.ajax('POST', '/ng_dates/bulk/apply', {
                 target: '#ng-dates-container',
-                values: { entries: JSON.stringify(entries) }
+                swap: 'outerHTML',
+                values: {
+                    entries: JSON.stringify(entries),
+                    active_tab: 'ng-bulk'
+                }
             });
         }
     </script>

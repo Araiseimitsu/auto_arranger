@@ -30,28 +30,87 @@
   </div>
   {% endif %}
 
+  {% set day_ng_summary = variant.ng_status.summary.day if variant.ng_status and variant.ng_status.summary else None %}
+  {% set night_ng_summary = variant.ng_status.summary.night if variant.ng_status and variant.ng_status.summary else None %}
+  {% set day_table_id = "day-table-" ~ variant.variant_index %}
+  {% set night_table_id = "night-table-" ~ variant.variant_index %}
+
+  {% if day_ng_summary or night_ng_summary %}
+  <div class="result-alert alert-warning ng-summary">
+    <h4 class="alert-title">NG確認サマリー</h4>
+    <div class="ng-summary-grid">
+      {% if day_ng_summary %}
+      <div>
+        <strong>日勤</strong>:
+        NGあり {{ day_ng_summary.ng_rows }} / {{ day_ng_summary.total_rows }} 行
+        <span class="text-secondary">
+          (担当者NG {{ day_ng_summary.member_conflict_rows }} 行)
+        </span>
+      </div>
+      {% endif %}
+      {% if night_ng_summary %}
+      <div>
+        <strong>夜勤</strong>:
+        NGあり {{ night_ng_summary.ng_rows }} / {{ night_ng_summary.total_rows }} 行
+        <span class="text-secondary">
+          (担当者NG {{ night_ng_summary.member_conflict_rows }} 行)
+        </span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Day Schedule -->
   <h4>日勤スケジュール</h4>
   {% if variant.schedule.day %}
+  <div class="ng-filter-toolbar" data-ng-filter-group="{{ day_table_id }}">
+    <span class="text-secondary">表示:</span>
+    <button type="button" class="ng-filter-btn active" data-ng-filter="all" data-ng-table="{{ day_table_id }}">
+      全件
+    </button>
+    <button type="button" class="ng-filter-btn" data-ng-filter="ng" data-ng-table="{{ day_table_id }}">
+      NGありのみ
+    </button>
+  </div>
   <div class="table-container">
-    <table>
+    <table id="{{ day_table_id }}">
       <thead>
         <tr>
           <th>日付</th>
           <th>当番1</th>
           <th>当番2</th>
           <th>当番3</th>
+          <th>NG確認</th>
         </tr>
       </thead>
       <tbody>
         {% for date_key, indexes in variant.schedule.day.items()|sort %}
-        <tr>
+        {% set ng_info = variant.ng_status.day.get(date_key|string) if variant.ng_status else None %}
+        <tr
+          data-ng-row="{{ 'true' if ng_info and ng_info.has_ng else 'false' }}"
+          class="{% if ng_info and ng_info.has_member_conflict %}row-member-ng{% elif ng_info and ng_info.has_ng %}row-global-ng{% endif %}"
+        >
           <td>{{ date_key }}</td>
           <td>{{ indexes.get(1, '-') }}</td>
           <td>{{ indexes.get(2, '-') }}</td>
           <td>{{ indexes.get(3, '-') }}</td>
+          <td>
+            {% if ng_info and ng_info.labels %}
+            <div class="ng-chip-list">
+              {% for label in ng_info.labels %}
+              <span class="ng-chip ng-chip-{{ label.kind }}">{{ label.text }}</span>
+              {% endfor %}
+            </div>
+            {% else %}
+            <span class="text-secondary">なし</span>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
+        <tr class="ng-filter-empty hidden">
+          <td colspan="5" class="text-secondary">NGありの行はありません</td>
+        </tr>
       </tbody>
     </table>
   </div>
@@ -62,23 +121,51 @@
   <!-- Night Schedule -->
   <h4>夜勤スケジュール</h4>
   {% if variant.schedule.night %}
+  <div class="ng-filter-toolbar" data-ng-filter-group="{{ night_table_id }}">
+    <span class="text-secondary">表示:</span>
+    <button type="button" class="ng-filter-btn active" data-ng-filter="all" data-ng-table="{{ night_table_id }}">
+      全件
+    </button>
+    <button type="button" class="ng-filter-btn" data-ng-filter="ng" data-ng-table="{{ night_table_id }}">
+      NGありのみ
+    </button>
+  </div>
   <div class="table-container">
-    <table>
+    <table id="{{ night_table_id }}">
       <thead>
         <tr>
           <th>週開始日</th>
           <th>夜勤1</th>
           <th>夜勤2</th>
+          <th>NG確認</th>
         </tr>
       </thead>
       <tbody>
         {% for date_key, indexes in variant.schedule.night.items()|sort %}
-        <tr>
+        {% set ng_info = variant.ng_status.night.get(date_key|string) if variant.ng_status else None %}
+        <tr
+          data-ng-row="{{ 'true' if ng_info and ng_info.has_ng else 'false' }}"
+          class="{% if ng_info and ng_info.has_member_conflict %}row-member-ng{% elif ng_info and ng_info.has_ng %}row-global-ng{% endif %}"
+        >
           <td>{{ date_key }}</td>
           <td>{{ indexes.get(1, '-') }}</td>
           <td>{{ indexes.get(2, '-') }}</td>
+          <td>
+            {% if ng_info and ng_info.labels %}
+            <div class="ng-chip-list">
+              {% for label in ng_info.labels %}
+              <span class="ng-chip ng-chip-{{ label.kind }}">{{ label.text }}</span>
+              {% endfor %}
+            </div>
+            {% else %}
+            <span class="text-secondary">なし</span>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
+        <tr class="ng-filter-empty hidden">
+          <td colspan="4" class="text-secondary">NGありの行はありません</td>
+        </tr>
       </tbody>
     </table>
   </div>

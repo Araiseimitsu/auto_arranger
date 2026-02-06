@@ -45,7 +45,8 @@ async def dashboard(request: Request):
         "pagination": history_data,
         "current_year": current_year,
         "today": date.today().isoformat(),
-        "all_members": all_members
+        "all_members": all_members,
+        "active_tab": "ng-global",
     })
 
 @router.get("/history", response_class=HTMLResponse)
@@ -170,7 +171,7 @@ async def update_settings(request: Request):
 
 # --- NG Dates Operations ---
 
-async def render_ng_dates_form(request, message=None, error=None):
+async def render_ng_dates_form(request, message=None, error=None, active_tab="ng-global"):
     ng_dates = load_ng_dates()
     ng_dates_yaml = yaml.dump(ng_dates, allow_unicode=True, default_flow_style=False)
     all_members = get_all_members()
@@ -181,6 +182,7 @@ async def render_ng_dates_form(request, message=None, error=None):
         "ng_dates_yaml": ng_dates_yaml,
         "all_members": all_members,
         "current_year": date.today().year,
+        "active_tab": active_tab,
     }
     if message: context["success_message"] = message
     if error: context["error_message"] = error
@@ -192,47 +194,60 @@ async def update_ng_dates_yaml(request: Request):
     """Fallback: Update via YAML textarea"""
     form_data = await request.form()
     yaml_content = form_data.get('ng_dates_yaml')
+    active_tab = form_data.get('active_tab') or 'ng-advanced'
     
     try:
         data = yaml.safe_load(yaml_content)
         save_ng_dates(data)
-        return await render_ng_dates_form(request, message="NG日程(YAML)を保存しました")
+        return await render_ng_dates_form(
+            request,
+            message="NG日程(YAML)を保存しました",
+            active_tab=active_tab
+        )
     except Exception as e:
-        return await render_ng_dates_form(request, error=f"YAML Error: {e}")
+        return await render_ng_dates_form(
+            request,
+            error=f"YAML Error: {e}",
+            active_tab=active_tab
+        )
 
 @router.post("/ng_dates/global/add", response_class=HTMLResponse)
 async def add_global_ng(request: Request):
     form = await request.form()
     date_str = form.get('date')
+    active_tab = form.get('active_tab') or 'ng-global'
     if date_str:
         add_global_ng_date(date_str)
-    return await render_ng_dates_form(request)
+    return await render_ng_dates_form(request, active_tab=active_tab)
 
 @router.post("/ng_dates/global/remove", response_class=HTMLResponse)
 async def remove_global_ng(request: Request):
     form = await request.form()
     date_str = form.get('date')
+    active_tab = form.get('active_tab') or 'ng-global'
     if date_str:
         remove_global_ng_date(date_str)
-    return await render_ng_dates_form(request)
+    return await render_ng_dates_form(request, active_tab=active_tab)
 
 @router.post("/ng_dates/member/add", response_class=HTMLResponse)
 async def add_member_ng(request: Request):
     form = await request.form()
     member = form.get('member')
     date_str = form.get('date')
+    active_tab = form.get('active_tab') or 'ng-member'
     if member and date_str:
         add_member_ng_date(member, date_str)
-    return await render_ng_dates_form(request)
+    return await render_ng_dates_form(request, active_tab=active_tab)
 
 @router.post("/ng_dates/member/remove", response_class=HTMLResponse)
 async def remove_member_ng(request: Request):
     form = await request.form()
     member = form.get('member')
     date_str = form.get('date')
+    active_tab = form.get('active_tab') or 'ng-member'
     if member and date_str:
         remove_member_ng_date(member, date_str)
-    return await render_ng_dates_form(request)
+    return await render_ng_dates_form(request, active_tab=active_tab)
 
 @router.post("/ng_dates/period/add", response_class=HTMLResponse)
 async def add_period_ng_route(request: Request):
@@ -241,18 +256,20 @@ async def add_period_ng_route(request: Request):
     start = form.get('start')
     end = form.get('end')
     reason = form.get('reason')
+    active_tab = form.get('active_tab') or 'ng-period'
     if member and start and end:
         add_period_ng(member, start, end, reason)
-    return await render_ng_dates_form(request)
+    return await render_ng_dates_form(request, active_tab=active_tab)
 
 @router.post("/ng_dates/period/remove", response_class=HTMLResponse)
 async def remove_period_ng_route(request: Request):
     form = await request.form()
     member = form.get('member')
     start = form.get('start')
+    active_tab = form.get('active_tab') or 'ng-period'
     if member and start:
         remove_period_ng(member, start)
-    return await render_ng_dates_form(request)
+    return await render_ng_dates_form(request, active_tab=active_tab)
 
 # --- Bulk NG Import ---
 
@@ -292,18 +309,29 @@ async def bulk_apply_ng(request: Request):
     """選択されたエントリを一括登録"""
     form = await request.form()
     entries_json = form.get('entries', '[]')
+    active_tab = form.get('active_tab') or 'ng-bulk'
 
     try:
         entries = json.loads(entries_json)
     except json.JSONDecodeError:
-        return await render_ng_dates_form(request, error="データの解析に失敗しました")
+        return await render_ng_dates_form(
+            request,
+            error="データの解析に失敗しました",
+            active_tab=active_tab
+        )
 
     if not entries:
-        return await render_ng_dates_form(request, error="登録対象が選択されていません")
+        return await render_ng_dates_form(
+            request,
+            error="登録対象が選択されていません",
+            active_tab=active_tab
+        )
 
     count = bulk_apply_ng_dates(entries)
     return await render_ng_dates_form(
-        request, message=f"{count}件のNG日を登録しました"
+        request,
+        message=f"{count}件のNG日を登録しました",
+        active_tab=active_tab
     )
 
 # --- End NG Operations ---
