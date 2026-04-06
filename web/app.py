@@ -93,7 +93,7 @@ def apply_windows_window_icon(window, icon_path: Path) -> None:
 app.mount("/static", StaticFiles(directory=str(get_static_dir())), name="static")
 app.include_router(router)
 
-if __name__ == "__main__":
+def launch_desktop_app() -> None:
     import uvicorn
     import threading
     import webview
@@ -120,3 +120,7 @@ if __name__ == "__main__":
     )
     window.events.shown += lambda: apply_windows_window_icon(window, icon_path)
     webview.start()
+
+
+if __name__ == "__main__":
+    launch_desktop_app()

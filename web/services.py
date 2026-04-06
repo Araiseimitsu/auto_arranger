@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Tuple
 
 import pandas as pd
 from src.data_loader import load_and_process_data, DutyRosterLoader
+from src.history_csv import append_generated_schedule_to_history
 from src.schedule_builder import ScheduleBuilder
 from src.schedule_analyzer import ScheduleAnalyzer
 from src.output_formatter import OutputFormatter

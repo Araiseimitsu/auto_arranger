@@ -12,7 +12,7 @@ if Path("build").exists():
     shutil.rmtree("build")
 
 args = [
-    'web/app.py',
+    'main.py',
     '--name=AutoArranger',
     '--onefile',
     '--noconsole',  # コンソールウィンドウを非表示

@@ -14,7 +14,7 @@ from .services import (
     get_history_summary,
     run_schedule_generation,
     get_selected_variant_result,
-    save_generated_schedule,
+    append_generated_schedule_to_history,
     add_global_ng_date, remove_global_ng_date,
     add_member_ng_date, remove_member_ng_date,
     add_period_ng, remove_period_ng,
@@ -476,8 +476,11 @@ async def save_result(request: Request):
     )
 
     if success:
-        path = save_generated_schedule(payload["selected"]["schedule"])
-        return HTMLResponse(f"<div class='success'>CSVを保存しました: {path}</div>")
+        result = append_generated_schedule_to_history(payload["selected"]["schedule"], CSV_PATH)
+        return HTMLResponse(
+            f"<div class='success'>履歴CSVに追加しました: {result['path']} "
+            f"(追加 {result['added_count']}件 / 重複スキップ {result['skipped_count']}件)</div>"
+        )
     else:
         return HTMLResponse(f"<div class='error'>保存失敗: {message}</div>")
 

@@ -65,15 +65,11 @@ ng_dates:
 ### 4. スケジュール生成
 
 ```bash
-# 例: 2025年3月21日からのスケジュール生成
-py -3.13 main.py --start 2025-03-21
-
-# CSV出力する場合
-py -3.13 main.py --start 2025-03-21 --output schedule.csv
-
-# 同一設定で3バージョン出力する場合（上位3候補から選択）
-py -3.13 main.py --start 2025-03-21 --variants 3 --variant-top-k 3
+# デスクトップUIを起動
+py -3.13 main.py
 ```
+
+起動後は画面内で開始日、バージョン数、別CSV保存、履歴CSV追加を操作します。
 
 ---
 

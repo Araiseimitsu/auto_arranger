@@ -244,38 +244,52 @@ class OutputFormatter:
             schedule: スケジュール辞書
             output_path: 出力ファイルパス
         """
+        df = self.schedule_to_dataframe(schedule)
+
+        # CSV保存
+        df.to_csv(output_path, index=False, encoding='utf-8-sig')
+
+    def schedule_to_dataframe(self, schedule: Dict) -> pd.DataFrame:
+        """
+        スケジュール辞書を履歴CSV互換のDataFrameに変換
+
+        Args:
+            schedule: スケジュール辞書
+
+        Returns:
+            date, shift_category, shift_index, person_name を持つDataFrame
+        """
         records = []
 
-        # 日勤レコード
         day_schedule = schedule.get('day', {})
         for day_date, indexes in day_schedule.items():
             for idx, member in indexes.items():
                 records.append({
-                    'date': day_date,
+                    'date': str(day_date),
                     'shift_category': 'Day',
-                    'shift_index': idx,
+                    'shift_index': int(idx),
                     'person_name': member
                 })
 
-        # 夜勤レコード
         night_schedule = schedule.get('night', {})
         for week_start, indexes in night_schedule.items():
             for idx, member in indexes.items():
                 records.append({
-                    'date': week_start,
+                    'date': str(week_start),
                     'shift_category': 'Night',
-                    'shift_index': idx,
+                    'shift_index': int(idx),
                     'person_name': member
                 })
 
-        # DataFrameに変換
-        df = pd.DataFrame(records)
+        df = pd.DataFrame(
+            records,
+            columns=['date', 'shift_category', 'shift_index', 'person_name']
+        )
 
-        # 日付でソート
-        df = df.sort_values('date')
+        if not df.empty:
+            df = df.sort_values(['date', 'shift_category', 'shift_index', 'person_name'])
 
-        # CSV保存
-        df.to_csv(output_path, index=False, encoding='utf-8-sig')
+        return df
 
     def print_schedule(
         self,
