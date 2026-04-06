@@ -4,7 +4,6 @@ from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from datetime import date
 import json
-import shutil
 import yaml
 
 from src.calendar_view import build_calendar_print_data
@@ -30,6 +29,7 @@ from .services import (
     get_resource_path,
     CSV_PATH,
     save_history_csv_page,
+    import_history_csv_files,
 )
 
 router = APIRouter()
@@ -473,22 +473,9 @@ async def generate_schedule(request: Request):
 
 
 @router.post("/upload_csv", response_class=HTMLResponse)
-async def upload_csv(request: Request, file: UploadFile = File(...)):
-    if not file.filename.endswith(".csv"):
-        return HTMLResponse(
-            "<div class='error'>CSVファイルのみアップロード可能です</div>",
-            status_code=400,
-        )
-
+async def upload_csv(request: Request, files: list[UploadFile] = File(...)):
     try:
-        # Verify content
-        content = await file.read()
-        # Backup existing
-        if CSV_PATH.exists():
-            shutil.copy(CSV_PATH, CSV_PATH.with_suffix(".bak"))
-
-        with open(CSV_PATH, "wb") as f:
-            f.write(content)
+        result = import_history_csv_files(files, csv_path=CSV_PATH)
 
         history_data = get_history_summary(page=1, page_size=50)
         return templates.TemplateResponse(
@@ -497,9 +484,14 @@ async def upload_csv(request: Request, file: UploadFile = File(...)):
                 "request": request,
                 "history": history_data["data"],
                 "pagination": history_data,
-                "success_message": "データを更新しました",
+                "success_message": (
+                    f"{result['file_count']} 件のCSVを取り込み、"
+                    f"{result['row_count']} 行の履歴データを保存しました"
+                ),
             },
         )
+    except ValueError as e:
+        return HTMLResponse(f"<div class='error'>{e}</div>", status_code=400)
     except Exception as e:
         return HTMLResponse(
             f"<div class='error'>Upload Error: {e}</div>", status_code=500

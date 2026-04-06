@@ -90,17 +90,71 @@
         </div>
         <div class="modal-body">
           <p>
-            現在のデータを上書きしますか？<br />この操作は取り消せませんが、バックアップは作成されます。
+            選択した CSV を結合して現在の履歴データを上書きします。<br />複数ファイル・フォルダ選択に対応し、バックアップは作成されます。
           </p>
 
           <form
+            id="upload-form"
             hx-post="/upload_csv"
             hx-encoding="multipart/form-data"
             hx-target="#history-container"
             hx-on::after-request="document.getElementById('upload-modal').classList.remove('show')"
           >
             <div class="form-group" style="text-align: left">
-              <input type="file" name="file" accept=".csv" required />
+              <input
+                id="upload-submit-files"
+                type="file"
+                name="files"
+                accept=".csv"
+                multiple
+                hidden
+              />
+              <input
+                id="upload-pick-files"
+                type="file"
+                accept=".csv"
+                multiple
+                hidden
+              />
+              <input
+                id="upload-pick-folder"
+                type="file"
+                accept=".csv"
+                multiple
+                webkitdirectory
+                directory
+                hidden
+              />
+              <div class="modal-actions" style="justify-content: flex-start">
+                <button
+                  type="button"
+                  id="pick-upload-files-btn"
+                  class="btn btn-secondary"
+                >
+                  ファイルを追加
+                </button>
+                <button
+                  type="button"
+                  id="pick-upload-folder-btn"
+                  class="btn btn-secondary"
+                >
+                  フォルダを追加
+                </button>
+                <button
+                  type="button"
+                  id="clear-upload-files-btn"
+                  class="btn btn-secondary"
+                >
+                  選択をクリア
+                </button>
+              </div>
+              <p id="upload-selection-summary" style="margin: 12px 0 8px">
+                まだ CSV は選択されていません
+              </p>
+              <ul
+                id="upload-selection-list"
+                style="max-height: 180px; overflow-y: auto; padding-left: 20px; margin: 0"
+              ></ul>
             </div>
             <div class="modal-actions">
               <button

@@ -1,3 +1,4 @@
+import io
 import json
 import yaml
 import shutil
@@ -20,11 +21,23 @@ from utils.logger import setup_logger
 
 logger = setup_logger('web_services')
 
+APP_ROOT = (
+    Path(sys.executable).resolve().parent
+    if getattr(sys, 'frozen', False)
+    else Path(__file__).resolve().parent.parent
+)
+BUNDLE_ROOT = Path(sys._MEIPASS) if hasattr(sys, '_MEIPASS') else APP_ROOT
+REQUIRED_HISTORY_COLUMNS = ['date', 'shift_category', 'shift_index', 'person_name']
+
+
 def get_resource_path(relative_path: str) -> Path:
-    """Get absolute path to resource, works for dev and for PyInstaller"""
-    if hasattr(sys, '_MEIPASS'):
-        return Path(sys._MEIPASS) / relative_path
-    return Path(relative_path)
+    """Read-only resource path for bundled assets/templates."""
+    return BUNDLE_ROOT / relative_path
+
+
+def get_storage_path(relative_path: str) -> Path:
+    """Writable storage path anchored to the app directory."""
+    return APP_ROOT / relative_path
 
 def ensure_file_exists(local_path: Path, resource_path_str: str) -> None:
     """Ensure file exists locally, copying from bundle if necessary"""
@@ -38,11 +51,11 @@ def ensure_file_exists(local_path: Path, resource_path_str: str) -> None:
             except Exception as e:
                 logger.error(f"Failed to copy default file: {e}")
 
-# Define paths relative to CWD (where the user runs the exe)
-SETTINGS_PATH = Path('config/settings.yaml')
-NG_DATES_PATH = Path('config/ng_dates.yaml')
-CSV_PATH = Path('data/duty_roster_2021_2025.csv')
-OUTPUT_DIR = Path('data/output')
+# Define writable paths relative to the app directory.
+SETTINGS_PATH = get_storage_path('config/settings.yaml')
+NG_DATES_PATH = get_storage_path('config/ng_dates.yaml')
+CSV_PATH = get_storage_path('data/duty_roster_2021_2025.csv')
+OUTPUT_DIR = get_storage_path('data/output')
 
 # Ensure configs exist on module load (or first access)
 ensure_file_exists(SETTINGS_PATH, 'config/settings.yaml')
@@ -177,6 +190,74 @@ def get_all_members() -> List[str]:
             extract_from_group(m['night_shift'].get('index_2_group', []))
             
     return sorted(list(members))
+
+
+def _read_history_dataframe_from_bytes(content: bytes, source_name: str) -> pd.DataFrame:
+    try:
+        df = pd.read_csv(io.BytesIO(content))
+    except Exception as e:
+        raise ValueError(f"{source_name}: CSVの読み込みに失敗しました: {e}") from e
+
+    missing = [c for c in REQUIRED_HISTORY_COLUMNS if c not in df.columns]
+    if missing:
+        raise ValueError(
+            f"{source_name}: 必要な列がありません: {', '.join(missing)}"
+        )
+
+    return df[REQUIRED_HISTORY_COLUMNS].copy()
+
+
+def import_history_csv_files(
+    uploaded_files: List[Any],
+    csv_path: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """複数CSVを結合して履歴CSVへ保存する。"""
+    if not uploaded_files:
+        raise ValueError("CSVファイルを選択してください")
+
+    target = csv_path if csv_path is not None else CSV_PATH
+    imported_frames: List[pd.DataFrame] = []
+    imported_names: List[str] = []
+
+    for uploaded_file in uploaded_files:
+        filename = Path(uploaded_file.filename or "").name
+        if not filename:
+            continue
+        if Path(filename).suffix.lower() != ".csv":
+            raise ValueError(f"{filename}: CSVファイルのみ取り込み可能です")
+
+        content = uploaded_file.file.read()
+        if not content:
+            continue
+
+        imported_frames.append(_read_history_dataframe_from_bytes(content, filename))
+        imported_names.append(filename)
+
+    if not imported_frames:
+        raise ValueError("有効なCSVファイルが見つかりませんでした")
+
+    merged_df = pd.concat(imported_frames, ignore_index=True)
+    merged_df = merged_df.drop_duplicates().reset_index(drop=True)
+    merged_df["date"] = pd.to_datetime(merged_df["date"])
+    merged_df["shift_index"] = merged_df["shift_index"].astype(int)
+    merged_df = merged_df.sort_values(
+        ["date", "shift_category", "shift_index", "person_name"],
+        ascending=[False, True, True, True],
+    ).reset_index(drop=True)
+    merged_df["date"] = merged_df["date"].dt.strftime("%Y-%m-%d")
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        shutil.copy(target, target.with_suffix(".bak"))
+
+    merged_df.to_csv(target, index=False, encoding="utf-8-sig")
+
+    return {
+        "path": str(target),
+        "file_count": len(imported_names),
+        "row_count": len(merged_df),
+        "file_names": imported_names,
+    }
 
 
 def normalize_schedule_from_client_json(

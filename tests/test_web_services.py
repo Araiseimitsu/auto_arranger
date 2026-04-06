@@ -1,9 +1,10 @@
 from datetime import date
+from io import BytesIO
 
 import pandas as pd
 
 from src.history_csv import append_generated_schedule_to_history
-from web.services import save_history_csv_page
+from web.services import import_history_csv_files, save_history_csv_page
 
 
 def build_sample_schedule():
@@ -114,3 +115,44 @@ def test_save_history_csv_page_rejects_night_index_three(tmp_path):
     ok, msg = save_history_csv_page(1, 1, rows, csv_path=csv_path)
     assert not ok
     assert '夜勤' in msg
+
+
+def test_import_history_csv_files_merges_multiple_files_and_deduplicates(tmp_path):
+    csv_path = tmp_path / 'history_import.csv'
+
+    file_a = type(
+        'UploadStub',
+        (),
+        {
+            'filename': 'a.csv',
+            'file': BytesIO(
+                (
+                    'date,shift_category,shift_index,person_name\n'
+                    '2026-04-20,Day,1,A\n'
+                    '2026-04-19,Night,1,B\n'
+                ).encode('utf-8')
+            ),
+        },
+    )()
+    file_b = type(
+        'UploadStub',
+        (),
+        {
+            'filename': 'nested/b.csv',
+            'file': BytesIO(
+                (
+                    'date,shift_category,shift_index,person_name\n'
+                    '2026-04-20,Day,1,A\n'
+                    '2026-04-18,Day,2,C\n'
+                ).encode('utf-8')
+            ),
+        },
+    )()
+
+    result = import_history_csv_files([file_a, file_b], csv_path=csv_path)
+    df = pd.read_csv(csv_path)
+
+    assert result['file_count'] == 2
+    assert result['row_count'] == 3
+    assert len(df) == 3
+    assert list(df['person_name']) == ['A', 'B', 'C']

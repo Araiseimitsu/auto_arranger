@@ -1,4 +1,9 @@
 <div id="history-table-wrapper" class="animate-fade-in">
+    {% if success_message %}
+    <div class="success-message">
+      {{ success_message }}
+    </div>
+    {% endif %}
     {% if history %}
     <p class="history-edit-intro">
       表示中のページの行を編集し、「このページを保存」で <code>data</code> 配下の履歴CSVに反映します（保存前に <code>.bak</code> を作成します）。

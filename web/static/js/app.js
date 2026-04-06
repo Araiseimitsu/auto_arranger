@@ -61,12 +61,110 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Upload Modal
     const uploadBtn = document.getElementById('upload-btn');
+    const uploadForm = document.getElementById('upload-form');
+    const uploadSubmitInput = document.getElementById('upload-submit-files');
+    const uploadPickFilesInput = document.getElementById('upload-pick-files');
+    const uploadPickFolderInput = document.getElementById('upload-pick-folder');
+    const pickUploadFilesBtn = document.getElementById('pick-upload-files-btn');
+    const pickUploadFolderBtn = document.getElementById('pick-upload-folder-btn');
+    const clearUploadFilesBtn = document.getElementById('clear-upload-files-btn');
+    const uploadSelectionSummary = document.getElementById('upload-selection-summary');
+    const uploadSelectionList = document.getElementById('upload-selection-list');
+    const uploadStore = {
+        dataTransfer: new DataTransfer(),
+        keys: new Set(),
+    };
+
+    const updateUploadSelectionView = () => {
+        if (!uploadSelectionSummary || !uploadSelectionList || !uploadSubmitInput) {
+            return;
+        }
+
+        const files = Array.from(uploadSubmitInput.files || []);
+        if (files.length === 0) {
+            uploadSelectionSummary.textContent = 'まだ CSV は選択されていません';
+            uploadSelectionList.innerHTML = '';
+            return;
+        }
+
+        uploadSelectionSummary.textContent = `${files.length} 件の CSV を選択中です`;
+        uploadSelectionList.innerHTML = files
+            .map((file) => {
+                const relPath = file.webkitRelativePath || file.name;
+                return `<li>${relPath}</li>`;
+            })
+            .join('');
+    };
+
+    const syncUploadFiles = () => {
+        if (!uploadSubmitInput) {
+            return;
+        }
+        uploadSubmitInput.files = uploadStore.dataTransfer.files;
+        updateUploadSelectionView();
+    };
+
+    const addUploadFiles = (fileList) => {
+        Array.from(fileList || []).forEach((file) => {
+            const fileKey = [
+                file.name,
+                file.size,
+                file.lastModified,
+                file.webkitRelativePath || '',
+            ].join('::');
+            if (uploadStore.keys.has(fileKey)) {
+                return;
+            }
+            uploadStore.keys.add(fileKey);
+            uploadStore.dataTransfer.items.add(file);
+        });
+        syncUploadFiles();
+    };
+
+    const clearUploadFiles = () => {
+        uploadStore.dataTransfer = new DataTransfer();
+        uploadStore.keys = new Set();
+        if (uploadPickFilesInput) {
+            uploadPickFilesInput.value = '';
+        }
+        if (uploadPickFolderInput) {
+            uploadPickFolderInput.value = '';
+        }
+        syncUploadFiles();
+    };
+
     if (uploadBtn) {
         uploadBtn.addEventListener('click', (e) => {
             e.preventDefault();
             openModal('upload-modal');
         });
     }
+
+    if (pickUploadFilesBtn && uploadPickFilesInput) {
+        pickUploadFilesBtn.addEventListener('click', () => uploadPickFilesInput.click());
+        uploadPickFilesInput.addEventListener('change', (e) => addUploadFiles(e.target.files));
+    }
+
+    if (pickUploadFolderBtn && uploadPickFolderInput) {
+        pickUploadFolderBtn.addEventListener('click', () => uploadPickFolderInput.click());
+        uploadPickFolderInput.addEventListener('change', (e) => addUploadFiles(e.target.files));
+    }
+
+    if (clearUploadFilesBtn) {
+        clearUploadFilesBtn.addEventListener('click', clearUploadFiles);
+    }
+
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', (e) => {
+            if (!uploadSubmitInput || !uploadSubmitInput.files || uploadSubmitInput.files.length === 0) {
+                e.preventDefault();
+                window.alert('CSVファイルまたはフォルダを選択してください');
+            }
+        });
+        uploadForm.addEventListener('htmx:afterRequest', clearUploadFiles);
+    }
+
+    updateUploadSelectionView();
 
     // Close buttons for Upload Modal
     const closeUploadBtns = [

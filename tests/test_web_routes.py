@@ -10,6 +10,7 @@ from web.app import app
 def test_save_result_passes_csv_path_to_history_append():
     client = TestClient(app)
     schedule = {'day': {}, 'night': {}}
+    import web.routes as routes
 
     with patch('web.routes.get_selected_variant_result') as mock_select, patch(
         'web.routes.append_generated_schedule_to_history'
@@ -36,7 +37,7 @@ def test_save_result_passes_csv_path_to_history_append():
         )
 
     assert response.status_code == 200
-    mock_append.assert_called_once_with(schedule, Path('data/duty_roster_2021_2025.csv'))
+    mock_append.assert_called_once_with(schedule, routes.CSV_PATH)
 
 
 def test_save_result_uses_client_schedule_json_when_present():
@@ -113,3 +114,34 @@ def test_history_save_endpoint_json(client, tmp_path, monkeypatch):
     assert response.status_code == 200
     data = response.json()
     assert data['success'] is True
+
+
+def test_upload_csv_accepts_multiple_files(client, tmp_path, monkeypatch):
+    import web.routes as routes
+    import web.services as svc
+
+    csv_path = tmp_path / 'merged.csv'
+    monkeypatch.setattr(routes, 'CSV_PATH', csv_path)
+    monkeypatch.setattr(svc, 'CSV_PATH', csv_path)
+
+    response = client.post(
+        '/upload_csv',
+        files=[
+            (
+                'files',
+                ('a.csv', 'date,shift_category,shift_index,person_name\n2026-04-20,Day,1,A\n', 'text/csv'),
+            ),
+            (
+                'files',
+                ('b.csv', 'date,shift_category,shift_index,person_name\n2026-04-19,Night,1,B\n', 'text/csv'),
+            ),
+        ],
+    )
+
+    assert response.status_code == 200
+    assert '2 件のCSVを取り込み' in response.text
+    saved = Path(csv_path)
+    assert saved.exists()
+    content = saved.read_text(encoding='utf-8-sig')
+    assert 'A' in content
+    assert 'B' in content
