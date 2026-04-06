@@ -1,10 +1,11 @@
+import json
 import yaml
 import shutil
 import sys
 import math
 from pathlib import Path
 from datetime import date
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Union, Optional
 
 import pandas as pd
 from src.data_loader import load_and_process_data, DutyRosterLoader
@@ -177,6 +178,59 @@ def get_all_members() -> List[str]:
             
     return sorted(list(members))
 
+
+def normalize_schedule_from_client_json(
+    raw: Union[str, Dict[str, Any]],
+) -> Dict[str, Any]:
+    """
+    ブラウザから送られた schedule_json を、OutputFormatter / 履歴追記用の
+    schedule 辞書へ正規化する（日付キーは date、枠番号は int）。
+    """
+    if isinstance(raw, str):
+        raw = raw.strip()
+        if not raw:
+            raise ValueError("schedule_json が空です")
+        data = json.loads(raw)
+    else:
+        data = raw
+
+    if not isinstance(data, dict):
+        raise ValueError("schedule_json の形式が不正です")
+
+    out: Dict[str, Any] = {"day": {}, "night": {}}
+
+    def _clean_indexes(indexes: Any) -> Dict[int, str]:
+        if not isinstance(indexes, dict):
+            return {}
+        norm: Dict[int, str] = {}
+        for idx_raw, name in indexes.items():
+            idx = int(idx_raw)
+            if name is None:
+                continue
+            s = str(name).strip()
+            if not s or s == "-":
+                continue
+            norm[idx] = s
+        return norm
+
+    for k, indexes in data.get("day", {}).items():
+        date_key = date.fromisoformat(str(k))
+        cleaned = _clean_indexes(indexes)
+        if cleaned:
+            out["day"][date_key] = cleaned
+
+    for k, indexes in data.get("night", {}).items():
+        date_key = date.fromisoformat(str(k))
+        cleaned = _clean_indexes(indexes)
+        if cleaned:
+            out["night"][date_key] = cleaned
+
+    if not out["day"] and not out["night"]:
+        raise ValueError("保存できる担当行がありません（空のスケジュール）")
+
+    return out
+
+
 # --- Bulk NG Import ---
 
 def bulk_preview_ng_dates(
@@ -218,55 +272,158 @@ def bulk_apply_ng_dates(entries: List[Dict]) -> int:
 
 # --- End Helpers ---
 
+def _history_rows_for_template(df_page: pd.DataFrame) -> List[Dict[str, Any]]:
+    """テンプレート用に日付・数値を表示しやすい形へ。"""
+    rows: List[Dict[str, Any]] = []
+    for _, r in df_page.iterrows():
+        date_val = ""
+        if "date" in r.index and pd.notna(r["date"]):
+            date_val = pd.Timestamp(r["date"]).strftime("%Y-%m-%d")
+        try:
+            si = int(r["shift_index"]) if pd.notna(r.get("shift_index")) else 1
+        except (TypeError, ValueError):
+            si = 1
+        pn = ""
+        if "person_name" in r.index and pd.notna(r.get("person_name")):
+            pn = str(r["person_name"]).strip()
+        sc = ""
+        if "shift_category" in r.index and pd.notna(r.get("shift_category")):
+            sc = str(r["shift_category"]).strip()
+        rows.append(
+            {
+                "date": date_val,
+                "shift_category": sc,
+                "shift_index": si,
+                "person_name": pn,
+            }
+        )
+    return rows
+
+
 def get_history_summary(page: int = 1, page_size: int = 50) -> Dict[str, Any]:
+    empty = {
+        "data": [],
+        "total_count": 0,
+        "total_pages": 0,
+        "current_page": 1,
+        "page_size": page_size,
+        "has_next": False,
+        "has_prev": False,
+    }
     if not CSV_PATH.exists():
-        return {
-            "data": [],
-            "total_count": 0,
-            "total_pages": 0,
-            "current_page": 1,
-            "has_next": False,
-            "has_prev": False
-        }
-    
+        return empty
+
     try:
         df = pd.read_csv(CSV_PATH)
-        # Sort by date desc
-        if 'date' in df.columns:
-            df['date'] = pd.to_datetime(df['date'])
-            df = df.sort_values('date', ascending=False)
-        
-        # Pagination
+        required = ["date", "shift_category", "shift_index", "person_name"]
+        missing = [c for c in required if c not in df.columns]
+        if missing:
+            logger.error(f"履歴CSVに必要な列がありません: {missing}")
+            return empty
+
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.sort_values("date", ascending=False).reset_index(drop=True)
+
         total_count = len(df)
-        total_pages = math.ceil(total_count / page_size)
-        
-        if page < 1: page = 1
-        if page > total_pages and total_pages > 0: page = total_pages
-        
-        # Slice data
+        total_pages = math.ceil(total_count / page_size) if page_size > 0 else 0
+
+        if page < 1:
+            page = 1
+        if total_pages > 0 and page > total_pages:
+            page = total_pages
+
         start_idx = (page - 1) * page_size
         end_idx = start_idx + page_size
         df_page = df.iloc[start_idx:end_idx]
-        
-        # Convert to list of dicts for template
+
         return {
-            "data": df_page.to_dict('records'),
+            "data": _history_rows_for_template(df_page),
             "total_count": total_count,
             "total_pages": total_pages,
             "current_page": page,
+            "page_size": page_size,
             "has_next": page < total_pages,
-            "has_prev": page > 1
+            "has_prev": page > 1,
         }
     except Exception as e:
         logger.error(f"Error reading history: {e}")
-        return {
-            "data": [],
-            "total_count": 0,
-            "total_pages": 0,
-            "current_page": 1,
-            "has_next": False,
-            "has_prev": False
-        }
+        return empty
+
+
+def save_history_csv_page(
+    page: int,
+    page_size: int,
+    rows: List[Dict[str, Any]],
+    csv_path: Optional[Path] = None,
+) -> Tuple[bool, str]:
+    """
+    履歴CSVのうち、指定ページに相当する行だけを上書き保存する。
+    表示と同じく日付の降順で並べた位置（iloc）に適用する。
+    """
+    target = csv_path if csv_path is not None else CSV_PATH
+    if not target.exists():
+        return False, "CSVファイルがありません"
+
+    required_cols = ["date", "shift_category", "shift_index", "person_name"]
+    try:
+        df = pd.read_csv(target)
+    except Exception as e:
+        return False, f"CSVの読み込みに失敗しました: {e}"
+
+    miss = [c for c in required_cols if c not in df.columns]
+    if miss:
+        return False, f"必要な列がありません: {', '.join(miss)}"
+
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.sort_values("date", ascending=False).reset_index(drop=True)
+
+    total = len(df)
+    if page < 1 or page_size < 1:
+        return False, "ページ指定が不正です"
+    start = (page - 1) * page_size
+    if start >= total:
+        return False, "ページが範囲外です"
+
+    expected_len = min(page_size, total - start)
+    if len(rows) != expected_len:
+        return False, f"行数が一致しません（このページは {expected_len} 行です）"
+
+    for i, row in enumerate(rows):
+        pos = start + i
+        try:
+            d = date.fromisoformat(str(row.get("date", "")).strip()[:10])
+        except ValueError:
+            return False, f"{i + 1}行目: 日付が不正です"
+
+        cat = str(row.get("shift_category", "")).strip()
+        if cat not in ("Day", "Night"):
+            return False, f"{i + 1}行目: シフト区分は Day または Night を選んでください"
+
+        try:
+            idx = int(row["shift_index"])
+        except (KeyError, TypeError, ValueError):
+            return False, f"{i + 1}行目: Index が不正です"
+
+        if cat == "Day" and idx not in (1, 2, 3):
+            return False, f"{i + 1}行目: 日勤の Index は 1〜3 です"
+        if cat == "Night" and idx not in (1, 2):
+            return False, f"{i + 1}行目: 夜勤の Index は 1〜2 です"
+
+        name = str(row.get("person_name", "")).strip()
+        if not name:
+            return False, f"{i + 1}行目: 担当者名を入力してください"
+
+        df.at[pos, "date"] = pd.Timestamp(d)
+        df.at[pos, "shift_category"] = cat
+        df.at[pos, "shift_index"] = idx
+        df.at[pos, "person_name"] = name
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        shutil.copy(target, target.with_suffix(".bak"))
+
+    df.to_csv(target, index=False, encoding="utf-8-sig")
+    return True, "履歴CSVを保存しました（.bak にバックアップ済み）"
 
 def run_schedule_generation(
     start_date_str: str,

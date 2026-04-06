@@ -1,5 +1,5 @@
 // Minimal JS setup
-console.log('App.js loaded v0.5.6');
+console.log('App.js loaded v0.6.2');
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM Content Loaded');
@@ -373,3 +373,277 @@ function moveMemberToGroup(buttonElement, targetGroupName) {
     // 移動先リストに追加
     targetContainer.appendChild(newMemberCard);
 }
+
+/**
+ * 作成結果パネルから日勤・夜勤の担当を JSON にまとめる（保存・印刷用）
+ */
+function buildScheduleJsonFromPanel(panel) {
+    if (!panel) return '{}';
+    const variantIdx = panel.getAttribute('data-variant-panel');
+    const day = {};
+    const night = {};
+    const dayTable = panel.querySelector('#day-table-' + variantIdx);
+    const nightTable = panel.querySelector('#night-table-' + variantIdx);
+
+    function collectRows(table, shiftType, bucket) {
+        if (!table) return;
+        table.querySelectorAll('tbody tr[data-date-key]').forEach(function (tr) {
+            const dk = tr.getAttribute('data-date-key');
+            if (!dk) return;
+            const row = {};
+            tr.querySelectorAll(
+                'select.schedule-cell-select[data-shift-type="' + shiftType + '"]'
+            ).forEach(function (sel) {
+                const slot = parseInt(sel.getAttribute('data-slot'), 10);
+                const v = (sel.value || '').trim();
+                if (v) row[slot] = v;
+            });
+            bucket[dk] = row;
+        });
+    }
+
+    collectRows(dayTable, 'day', day);
+    collectRows(nightTable, 'night', night);
+    return JSON.stringify({ day: day, night: night });
+}
+
+function syncScheduleJsonIntoForm(form) {
+    const panel = form.closest('.variant-panel');
+    const field = form.querySelector('.schedule-json-field');
+    if (field && panel) {
+        field.value = buildScheduleJsonFromPanel(panel);
+    }
+}
+
+document.body.addEventListener('htmx:beforeRequest', function (evt) {
+    const elt = evt.detail && evt.detail.elt;
+    if (!elt || elt.tagName !== 'FORM') return;
+    if (!elt.classList.contains('schedule-save-form')) return;
+    syncScheduleJsonIntoForm(elt);
+});
+
+function closePrintCalendarModal() {
+    var modal = document.getElementById('print-calendar-modal');
+    var iframe = document.getElementById('print-calendar-iframe');
+    if (iframe) {
+        if (iframe._blobUrl) {
+            try {
+                URL.revokeObjectURL(iframe._blobUrl);
+            } catch (e) {}
+            iframe._blobUrl = null;
+        }
+        iframe.src = 'about:blank';
+    }
+    if (modal) {
+        modal.classList.remove('show', 'active');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+}
+
+/** 印刷ビュー HTML を同一ページのモーダル iframe に表示（新規タブ不要・ポップアップブロック無関係） */
+function openPrintCalendarModal(html) {
+    var modal = document.getElementById('print-calendar-modal');
+    var iframe = document.getElementById('print-calendar-iframe');
+    if (!modal || !iframe) {
+        alert('印刷ビューを表示できません。ページを再読み込みしてください。');
+        return;
+    }
+    if (iframe._blobUrl) {
+        try {
+            URL.revokeObjectURL(iframe._blobUrl);
+        } catch (e) {}
+        iframe._blobUrl = null;
+    }
+    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    iframe._blobUrl = url;
+    iframe.src = url;
+    modal.classList.add('show', 'active');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+document.body.addEventListener('click', function (evt) {
+    const printBtn = evt.target.closest('.btn-open-print-calendar');
+    if (printBtn) {
+        evt.preventDefault();
+        const panel = printBtn.closest('.variant-panel');
+        const scheduleJson = buildScheduleJsonFromPanel(panel);
+        const fd = new FormData();
+        fd.append('schedule_json', scheduleJson);
+        fd.append('start_date', printBtn.getAttribute('data-start-date') || '');
+        fd.append('end_date', printBtn.getAttribute('data-end-date') || '');
+        fd.append('variant_index', printBtn.getAttribute('data-variant-index') || '0');
+        fetch('/print/calendar', { method: 'POST', body: fd })
+            .then(function (res) {
+                return res.text().then(function (text) {
+                    return { ok: res.ok, text: text };
+                });
+            })
+            .then(function (result) {
+                openPrintCalendarModal(result.text);
+            })
+            .catch(function () {
+                openPrintCalendarModal(
+                    '<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>エラー</title></head><body style="font-family:sans-serif;padding:1rem">通信エラーで印刷ビューを取得できませんでした。</body></html>'
+                );
+            });
+        return;
+    }
+});
+
+(function initPrintCalendarModalUi() {
+    var modal = document.getElementById('print-calendar-modal');
+    var closeBtn = document.getElementById('print-calendar-close-btn');
+    var printBtn = document.getElementById('print-calendar-print-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function () {
+            closePrintCalendarModal();
+        });
+    }
+    if (modal) {
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) {
+                closePrintCalendarModal();
+            }
+        });
+    }
+    if (printBtn) {
+        printBtn.addEventListener('click', function () {
+            var iframe = document.getElementById('print-calendar-iframe');
+            if (iframe && iframe.contentWindow) {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch (e) {}
+            }
+        });
+    }
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        var m = document.getElementById('print-calendar-modal');
+        if (m && (m.classList.contains('show') || m.classList.contains('active'))) {
+            closePrintCalendarModal();
+        }
+    });
+})();
+
+document.body.addEventListener('click', function (evt) {
+    const btn = evt.target.closest('.btn-swap-row');
+    if (!btn) return;
+    const tr = btn.closest('tr[data-date-key]');
+    const table = tr && tr.closest('table');
+    if (!tr || !table) return;
+    const rows = Array.prototype.slice.call(
+        table.querySelectorAll('tbody tr[data-date-key]')
+    );
+    const idx = rows.indexOf(tr);
+    const dir = btn.getAttribute('data-swap');
+    const j = dir === 'up' ? idx - 1 : idx + 1;
+    if (j < 0 || j >= rows.length) return;
+    const trOther = rows[j];
+    const selectsA = tr.querySelectorAll('select.schedule-cell-select');
+    const selectsB = trOther.querySelectorAll('select.schedule-cell-select');
+    if (selectsA.length !== selectsB.length || selectsA.length === 0) return;
+    for (let i = 0; i < selectsA.length; i++) {
+        const tmp = selectsA[i].value;
+        selectsA[i].value = selectsB[i].value;
+        selectsB[i].value = tmp;
+    }
+});
+
+// --- 履歴CSV テーブル編集（ページ単位保存）---
+function syncHistoryNightIndexOptions(tr) {
+    const cat = tr.querySelector('.history-select-cat');
+    const idx = tr.querySelector('.history-select-idx');
+    if (!cat || !idx) return;
+    const opt3 = idx.querySelector('option[value="3"]');
+    if (!opt3) return;
+    if (cat.value === 'Night') {
+        opt3.disabled = true;
+        if (idx.value === '3') {
+            idx.value = '1';
+        }
+    } else {
+        opt3.disabled = false;
+    }
+}
+
+function initHistoryEditForm(root) {
+    const form = (root && root.querySelector('#history-edit-form')) || document.getElementById('history-edit-form');
+    if (!form) return;
+    form.querySelectorAll('.history-edit-row').forEach(function (tr) {
+        syncHistoryNightIndexOptions(tr);
+    });
+}
+
+document.body.addEventListener('change', function (evt) {
+    const cat = evt.target.closest('.history-select-cat');
+    if (!cat) return;
+    const tr = cat.closest('.history-edit-row');
+    if (tr) syncHistoryNightIndexOptions(tr);
+});
+
+document.body.addEventListener('htmx:afterSwap', function (evt) {
+    const t = evt.detail && evt.detail.target;
+    if (t && t.id === 'history-container') {
+        initHistoryEditForm(t);
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    initHistoryEditForm(document);
+});
+
+document.body.addEventListener('submit', function (evt) {
+    const form = evt.target;
+    if (!form.id || form.id !== 'history-edit-form') return;
+    evt.preventDefault();
+    const msgEl = document.getElementById('history-save-message');
+    const page = parseInt(form.querySelector('[name="page"]').value, 10) || 1;
+    const pageSize = parseInt(form.querySelector('[name="page_size"]').value, 10) || 50;
+    const rows = [];
+    form.querySelectorAll('.history-edit-row').forEach(function (tr) {
+        const dateInput = tr.querySelector('.history-input-date');
+        const cat = tr.querySelector('.history-select-cat');
+        const idx = tr.querySelector('.history-select-idx');
+        const name = tr.querySelector('.history-input-name');
+        rows.push({
+            date: dateInput ? dateInput.value : '',
+            shift_category: cat ? cat.value : '',
+            shift_index: idx ? parseInt(idx.value, 10) : 1,
+            person_name: name ? name.value.trim() : '',
+        });
+    });
+
+    if (msgEl) {
+        msgEl.textContent = '保存中…';
+        msgEl.className = 'history-save-message';
+    }
+
+    fetch('/history/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page: page, page_size: pageSize, rows: rows }),
+    })
+        .then(function (r) {
+            return r.json().then(function (data) {
+                return { ok: r.ok, data: data };
+            });
+        })
+        .then(function (result) {
+            if (!msgEl) return;
+            if (result.ok && result.data.success) {
+                msgEl.textContent = result.data.message || '保存しました';
+                msgEl.className = 'history-save-message success';
+            } else {
+                msgEl.textContent = (result.data && result.data.message) || '保存に失敗しました';
+                msgEl.className = 'history-save-message error';
+            }
+        })
+        .catch(function () {
+            if (msgEl) {
+                msgEl.textContent = '通信エラーで保存できませんでした';
+                msgEl.className = 'history-save-message error';
+            }
+        });
+});

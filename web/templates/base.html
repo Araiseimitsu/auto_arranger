@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}当番表自動作成システム{% endblock %}</title>
     <link rel="icon" href="/static/resources/auto_arranger.ico" />
-    <link rel="stylesheet" href="/static/css/style.css?v=0.6.4" />
+    <link rel="stylesheet" href="/static/css/style.css?v=0.6.9" />
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
-    <script src="/static/js/app.js?v=0.5.8" defer></script>
+    <script src="/static/js/app.js?v=0.6.2" defer></script>
   </head>
   <body>
     <div class="container">
@@ -114,6 +114,32 @@
             </div>
           </form>
         </div>
+      </div>
+    </div>
+
+    <!-- 印刷用カレンダー（ポップアップブロック回避のため同一ページ内 iframe） -->
+    <div
+      id="print-calendar-modal"
+      class="modal-overlay print-calendar-overlay"
+      aria-hidden="true"
+    >
+      <div class="print-calendar-shell" role="dialog" aria-labelledby="print-calendar-title">
+        <div class="print-calendar-toolbar">
+          <h2 id="print-calendar-title" class="print-calendar-title">印刷用カレンダー</h2>
+          <div class="print-calendar-toolbar-actions">
+            <button type="button" class="btn btn-secondary" id="print-calendar-print-btn">
+              印刷
+            </button>
+            <button type="button" class="btn btn-primary" id="print-calendar-close-btn">
+              閉じる
+            </button>
+          </div>
+        </div>
+        <iframe
+          id="print-calendar-iframe"
+          class="print-calendar-iframe"
+          title="印刷用カレンダーのプレビュー"
+        ></iframe>
       </div>
     </div>
   </body>

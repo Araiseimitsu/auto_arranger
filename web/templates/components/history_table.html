@@ -1,27 +1,69 @@
 <div id="history-table-wrapper" class="animate-fade-in">
     {% if history %}
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>日付</th>
-                    <th>シフト区分</th>
-                    <th>Index</th>
-                    <th>担当者</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in history %}
-                <tr>
-                    <td>{{ row.date }}</td>
-                    <td>{{ row.shift_category }}</td>
-                    <td>{{ row.shift_index }}</td>
-                    <td>{{ row.person_name }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
+    <p class="history-edit-intro">
+      表示中のページの行を編集し、「このページを保存」で <code>data</code> 配下の履歴CSVに反映します（保存前に <code>.bak</code> を作成します）。
+    </p>
+    <div id="history-save-message" class="history-save-message" role="status" aria-live="polite"></div>
+
+    <form id="history-edit-form" class="history-edit-form" novalidate>
+      <input type="hidden" name="page" value="{{ pagination.current_page }}" />
+      <input type="hidden" name="page_size" value="{{ pagination.page_size|default(50) }}" />
+
+      <div class="table-container history-edit-table-wrap">
+        <table class="history-edit-table">
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>シフト区分</th>
+              <th>Index</th>
+              <th>担当者</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in history %}
+            <tr class="history-edit-row">
+              <td>
+                <input
+                  type="date"
+                  class="history-input history-input-date"
+                  value="{{ row.date }}"
+                  required
+                  aria-label="日付 行{{ loop.index }}"
+                />
+              </td>
+              <td>
+                <select class="history-input history-select-cat" aria-label="シフト区分 行{{ loop.index }}">
+                  <option value="Day" {% if row.shift_category == 'Day' %}selected{% endif %}>Day（日勤）</option>
+                  <option value="Night" {% if row.shift_category == 'Night' %}selected{% endif %}>Night（夜勤）</option>
+                </select>
+              </td>
+              <td>
+                <select class="history-input history-select-idx" aria-label="Index 行{{ loop.index }}">
+                  <option value="1" {% if row.shift_index == 1 %}selected{% endif %}>1</option>
+                  <option value="2" {% if row.shift_index == 2 %}selected{% endif %}>2</option>
+                  <option value="3" {% if row.shift_index == 3 %}selected{% endif %}>3</option>
+                </select>
+              </td>
+              <td>
+                <input
+                  type="text"
+                  class="history-input history-input-name"
+                  value="{{ row.person_name }}"
+                  required
+                  autocomplete="off"
+                  aria-label="担当者 行{{ loop.index }}"
+                />
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
         </table>
-    </div>
+      </div>
+
+      <div class="history-edit-actions">
+        <button type="submit" class="btn btn-primary">このページを保存</button>
+      </div>
+    </form>
 
     <!-- Pagination -->
     <div class="pagination">

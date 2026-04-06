@@ -4,8 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>当番表カレンダー印刷</title>
-    <link rel="stylesheet" href="/static/css/print_calendar.css?v=0.1.0" />
-    <script src="/static/js/print_calendar.js?v=0.1.0" defer></script>
+    {# blob iframe では /static の相対解決が効かないことがあるため絶対 URL #}
+    <link
+      rel="stylesheet"
+      href="{{ request.url_for('static', path='css/print_calendar.css') }}?v=0.2.0"
+    />
+    <script
+      src="{{ request.url_for('static', path='js/print_calendar.js') }}?v=0.2.0"
+      defer
+    ></script>
   </head>
   <body>
     <div class="print-toolbar no-print">
@@ -43,43 +50,40 @@
             <tr>
               {% for day in week.days %}
               <td
-                class="
-                  {% if not day.in_month %}is-outside-month{% endif %}
-                  {% if not day.in_range %}is-outside-range{% endif %}
-                  {% if day.is_weekend %}is-weekend{% endif %}
-                  {% if day.is_today %}is-today{% endif %}
-                "
+                class="{% if not day.in_month %}is-outside-month{% endif %} {% if not day.in_range %}is-outside-range{% endif %} {% if day.is_weekend %}is-weekend{% endif %} {% if day.is_today %}is-today{% endif %}"
               >
-                <div class="day-head">
-                  <span class="day-number">{{ day.date.day }}</span>
-                  {% if day.has_global_ng %}
-                  <span class="chip chip-global">全体NG</span>
-                  {% endif %}
-                </div>
-
-                {% if day.day_assignments or day.night_members %}
-                <ul class="assign-list">
-                  {% for item in day.day_assignments %}
-                  <li>当{{ item.index }}: {{ item.member }}</li>
-                  {% endfor %}
-                  {% if day.night_members %}
-                  <li>
-                    夜勤: {{ day.night_members|join(" / ") }}
-                    {% if day.night_week_start and day.night_week_end %}
-                    <span class="week-note">({{ day.night_week_start.month }}/{{ day.night_week_start.day }}-{{ day.night_week_end.month }}/{{ day.night_week_end.day }})</span>
+                <div class="day-cell">
+                  <div class="day-head">
+                    <span class="day-number">{{ day.date.day }}</span>
+                    {% if day.has_global_ng %}
+                    <span class="chip chip-global">全体NG</span>
                     {% endif %}
-                  </li>
-                  {% endif %}
-                </ul>
-                {% else %}
-                <div class="assign-empty">-</div>
-                {% endif %}
+                  </div>
 
-                {% if day.member_ng_count > 0 %}
-                <div class="member-ng">
-                  出勤不可: {{ day.member_ng_preview }}
+                  {% if day.day_assignments or day.night_members %}
+                  <ul class="assign-list">
+                    {% for item in day.day_assignments %}
+                    <li>当{{ item.index }}: {{ item.member }}</li>
+                    {% endfor %}
+                    {% if day.night_members %}
+                    <li>
+                      夜勤: {{ day.night_members|join(" / ") }}
+                      {% if day.night_week_start and day.night_week_end %}
+                      <span class="week-note"
+                        >({{ day.night_week_start.month }}/{{ day.night_week_start.day }}-{{ day.night_week_end.month }}/{{ day.night_week_end.day }})</span
+                      >
+                      {% endif %}
+                    </li>
+                    {% endif %}
+                  </ul>
+                  {% else %}
+                  <div class="assign-empty">-</div>
+                  {% endif %}
+
+                  {% if day.member_ng_count > 0 %}
+                  <div class="member-ng">出勤不可: {{ day.member_ng_preview }}</div>
+                  {% endif %}
                 </div>
-                {% endif %}
               </td>
               {% endfor %}
             </tr>

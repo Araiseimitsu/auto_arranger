@@ -1,20 +1,51 @@
-<div class="variant-panel{% if is_active %} active{% endif %}" data-variant-panel="{{ variant.variant_index }}">
+<div
+  class="variant-panel{% if is_active %} active{% endif %}"
+  data-variant-panel="{{ variant.variant_index }}"
+>
+  <div class="schedule-manual-hint">
+    <p>
+      <strong>手動調整:</strong>
+      当番はプルダウンで変更できます。「↑」「↓」は表示順の前後の<strong>日付同士で担当セットを入れ替え</strong>ます（日付行は動きません）。<strong>カレンダー表示</strong>はこの表の内容を反映します。編集後も上の統計・NG・分析は自動では更新されません。
+    </p>
+  </div>
   <div class="card-header variant-header">
     <div class="variant-actions">
-      <form hx-post="/save_result" hx-target="#save-message-{{ variant.variant_index }}">
-        <input type="hidden" name="start_date" value="{{ start_date }}" />
-        <input type="hidden" name="variant_index" value="{{ variant.variant_index }}" />
+      <form
+        hx-post="/save_result"
+        hx-target="#save-message-{{ variant.variant_index }}"
+        class="schedule-save-form"
+      >
+        <input
+          type="hidden"
+          name="schedule_json"
+          class="schedule-json-field"
+          value=""
+        />
+        <input
+          type="hidden"
+          name="start_date"
+          value="{{ start_date.isoformat() }}"
+        />
+        <input
+          type="hidden"
+          name="variant_index"
+          value="{{ variant.variant_index }}"
+        />
         <input type="hidden" name="variants" value="{{ variant_count }}" />
         <input type="hidden" name="variant_top_k" value="{{ variant_top_k }}" />
         <button type="submit" class="btn btn-primary">履歴CSVに追加</button>
       </form>
-      <form action="/print/calendar" method="get" target="_blank">
-        <input type="hidden" name="start_date" value="{{ start_date }}" />
-        <input type="hidden" name="variant_index" value="{{ variant.variant_index }}" />
-        <input type="hidden" name="variants" value="{{ variant_count }}" />
-        <input type="hidden" name="variant_top_k" value="{{ variant_top_k }}" />
-        <button type="submit" class="btn btn-secondary">印刷用カレンダー</button>
-      </form>
+      {# fetch で POST し新規ウィンドウに HTML を描画（target=_blank のフォーム
+      POST は環境によって GET に化け start_date 欠落になる） #}
+      <button
+        type="button"
+        class="btn btn-secondary btn-open-print-calendar"
+        data-start-date="{{ start_date.isoformat() }}"
+        data-end-date="{{ end_date.isoformat() }}"
+        data-variant-index="{{ variant.variant_index }}"
+      >
+        カレンダー表示
+      </button>
     </div>
   </div>
   <div id="save-message-{{ variant.variant_index }}"></div>
@@ -27,7 +58,9 @@
       <div>
         <strong>公平性指標 (偏差比):</strong>
         {% set ratio = variant.statistics.fairness.deviation_ratio %}
-        <span class="{% if ratio <= 0.3 %}stat-value-good{% else %}stat-value-bad{% endif %}">
+        <span
+          class="{% if ratio <= 0.3 %}stat-value-good{% else %}stat-value-bad{% endif %}"
+        >
           {{ "%.2f"|format(ratio) }}
         </span>
       </div>
@@ -37,30 +70,27 @@
       </div>
     </div>
   </div>
-  {% endif %}
-
-  {% set day_ng_summary = variant.ng_status.summary.day if variant.ng_status and variant.ng_status.summary else None %}
-  {% set night_ng_summary = variant.ng_status.summary.night if variant.ng_status and variant.ng_status.summary else None %}
-  {% set day_table_id = "day-table-" ~ variant.variant_index %}
-  {% set night_table_id = "night-table-" ~ variant.variant_index %}
-
-  {% if day_ng_summary or night_ng_summary %}
+  {% endif %} {% set day_ng_summary = variant.ng_status.summary.day if
+  variant.ng_status and variant.ng_status.summary else None %} {% set
+  night_ng_summary = variant.ng_status.summary.night if variant.ng_status and
+  variant.ng_status.summary else None %} {% set day_table_id = "day-table-" ~
+  variant.variant_index %} {% set night_table_id = "night-table-" ~
+  variant.variant_index %} {% if day_ng_summary or night_ng_summary %}
   <div class="result-alert alert-warning ng-summary">
     <h4 class="alert-title">NG確認サマリー</h4>
     <div class="ng-summary-grid">
       {% if day_ng_summary %}
       <div>
-        <strong>日勤</strong>:
-        NGあり {{ day_ng_summary.ng_rows }} / {{ day_ng_summary.total_rows }} 行
+        <strong>日勤</strong>: NGあり {{ day_ng_summary.ng_rows }} / {{
+        day_ng_summary.total_rows }} 行
         <span class="text-secondary">
           (担当者NG {{ day_ng_summary.member_conflict_rows }} 行)
         </span>
       </div>
-      {% endif %}
-      {% if night_ng_summary %}
+      {% endif %} {% if night_ng_summary %}
       <div>
-        <strong>夜勤</strong>:
-        NGあり {{ night_ng_summary.ng_rows }} / {{ night_ng_summary.total_rows }} 行
+        <strong>夜勤</strong>: NGあり {{ night_ng_summary.ng_rows }} / {{
+        night_ng_summary.total_rows }} 行
         <span class="text-secondary">
           (担当者NG {{ night_ng_summary.member_conflict_rows }} 行)
         </span>
@@ -75,10 +105,20 @@
   {% if variant.schedule.day %}
   <div class="ng-filter-toolbar" data-ng-filter-group="{{ day_table_id }}">
     <span class="text-secondary">表示:</span>
-    <button type="button" class="ng-filter-btn active" data-ng-filter="all" data-ng-table="{{ day_table_id }}">
+    <button
+      type="button"
+      class="ng-filter-btn active"
+      data-ng-filter="all"
+      data-ng-table="{{ day_table_id }}"
+    >
       全件
     </button>
-    <button type="button" class="ng-filter-btn" data-ng-filter="ng" data-ng-table="{{ day_table_id }}">
+    <button
+      type="button"
+      class="ng-filter-btn"
+      data-ng-filter="ng"
+      data-ng-table="{{ day_table_id }}"
+    >
       NGありのみ
     </button>
   </div>
@@ -87,6 +127,7 @@
       <thead>
         <tr>
           <th>日付</th>
+          <th class="schedule-actions-col">入替</th>
           <th>当番1</th>
           <th>当番2</th>
           <th>当番3</th>
@@ -96,19 +137,56 @@
       <tbody>
         {% for date_key, indexes in variant.schedule.day.items()|sort %}
         {% set ng_info = variant.ng_status.day.get(date_key|string) if variant.ng_status else None %}
+        {% set dk = date_key|string %}
         <tr
+          data-date-key="{{ dk }}"
           data-ng-row="{{ 'true' if ng_info and ng_info.has_ng else 'false' }}"
           class="{% if ng_info and ng_info.has_member_conflict %}row-member-ng{% elif ng_info and ng_info.has_ng %}row-global-ng{% endif %}"
         >
           <td>{{ date_key }}</td>
-          <td>{{ indexes.get(1, '-') }}</td>
-          <td>{{ indexes.get(2, '-') }}</td>
-          <td>{{ indexes.get(3, '-') }}</td>
+          <td class="schedule-actions-col">
+            <div class="schedule-row-actions">
+              <button
+                type="button"
+                class="btn-swap-row"
+                data-swap="up"
+                title="前行と担当を入れ替え"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                class="btn-swap-row"
+                data-swap="down"
+                title="次行と担当を入れ替え"
+              >
+                ↓
+              </button>
+            </div>
+          </td>
+          {% for i in [1, 2, 3] %}
+          {% set slot_val = indexes.get(i) %}
+          <td>
+            <select
+              class="schedule-cell-select"
+              data-shift-type="day"
+              data-slot="{{ i }}"
+              aria-label="日勤 当番{{ i }} {{ date_key }}"
+            >
+              <option value="" {% if not slot_val or slot_val == '-' %}selected{% endif %}>-</option>
+              {% for m in all_members|default([]) %}
+              <option value="{{ m }}" {% if slot_val == m %}selected{% endif %}>{{ m }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          {% endfor %}
           <td>
             {% if ng_info and ng_info.labels %}
             <div class="ng-chip-list">
               {% for label in ng_info.labels %}
-              <span class="ng-chip ng-chip-{{ label.kind }}">{{ label.text }}</span>
+              <span class="ng-chip ng-chip-{{ label.kind }}"
+                >{{ label.text }}</span
+              >
               {% endfor %}
             </div>
             {% else %}
@@ -118,7 +196,7 @@
         </tr>
         {% endfor %}
         <tr class="ng-filter-empty hidden">
-          <td colspan="5" class="text-secondary">NGありの行はありません</td>
+          <td colspan="6" class="text-secondary">NGありの行はありません</td>
         </tr>
       </tbody>
     </table>
@@ -132,10 +210,20 @@
   {% if variant.schedule.night %}
   <div class="ng-filter-toolbar" data-ng-filter-group="{{ night_table_id }}">
     <span class="text-secondary">表示:</span>
-    <button type="button" class="ng-filter-btn active" data-ng-filter="all" data-ng-table="{{ night_table_id }}">
+    <button
+      type="button"
+      class="ng-filter-btn active"
+      data-ng-filter="all"
+      data-ng-table="{{ night_table_id }}"
+    >
       全件
     </button>
-    <button type="button" class="ng-filter-btn" data-ng-filter="ng" data-ng-table="{{ night_table_id }}">
+    <button
+      type="button"
+      class="ng-filter-btn"
+      data-ng-filter="ng"
+      data-ng-table="{{ night_table_id }}"
+    >
       NGありのみ
     </button>
   </div>
@@ -144,6 +232,7 @@
       <thead>
         <tr>
           <th>週開始日</th>
+          <th class="schedule-actions-col">入替</th>
           <th>夜勤1</th>
           <th>夜勤2</th>
           <th>NG確認</th>
@@ -152,18 +241,56 @@
       <tbody>
         {% for date_key, indexes in variant.schedule.night.items()|sort %}
         {% set ng_info = variant.ng_status.night.get(date_key|string) if variant.ng_status else None %}
+        {% set dk = date_key|string %}
         <tr
+          data-date-key="{{ dk }}"
           data-ng-row="{{ 'true' if ng_info and ng_info.has_ng else 'false' }}"
           class="{% if ng_info and ng_info.has_member_conflict %}row-member-ng{% elif ng_info and ng_info.has_ng %}row-global-ng{% endif %}"
         >
           <td>{{ date_key }}</td>
-          <td>{{ indexes.get(1, '-') }}</td>
-          <td>{{ indexes.get(2, '-') }}</td>
+          <td class="schedule-actions-col">
+            <div class="schedule-row-actions">
+              <button
+                type="button"
+                class="btn-swap-row"
+                data-swap="up"
+                title="前行と担当を入れ替え"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                class="btn-swap-row"
+                data-swap="down"
+                title="次行と担当を入れ替え"
+              >
+                ↓
+              </button>
+            </div>
+          </td>
+          {% for i in [1, 2] %}
+          {% set slot_val = indexes.get(i) %}
+          <td>
+            <select
+              class="schedule-cell-select"
+              data-shift-type="night"
+              data-slot="{{ i }}"
+              aria-label="夜勤 夜勤{{ i }} {{ date_key }}"
+            >
+              <option value="" {% if not slot_val or slot_val == '-' %}selected{% endif %}>-</option>
+              {% for m in all_members|default([]) %}
+              <option value="{{ m }}" {% if slot_val == m %}selected{% endif %}>{{ m }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          {% endfor %}
           <td>
             {% if ng_info and ng_info.labels %}
             <div class="ng-chip-list">
               {% for label in ng_info.labels %}
-              <span class="ng-chip ng-chip-{{ label.kind }}">{{ label.text }}</span>
+              <span class="ng-chip ng-chip-{{ label.kind }}"
+                >{{ label.text }}</span
+              >
               {% endfor %}
             </div>
             {% else %}
@@ -173,7 +300,7 @@
         </tr>
         {% endfor %}
         <tr class="ng-filter-empty hidden">
-          <td colspan="4" class="text-secondary">NGありの行はありません</td>
+          <td colspan="5" class="text-secondary">NGありの行はありません</td>
         </tr>
       </tbody>
     </table>
@@ -202,9 +329,7 @@
     </div>
     {% else %}
     <div class="result-alert alert-success">
-      <span class="alert-inline">
-        ? 日勤・夜勤の期間内重複はありません
-      </span>
+      <span class="alert-inline"> ? 日勤・夜勤の期間内重複はありません </span>
     </div>
     {% endif %}
 
@@ -247,8 +372,8 @@
           </tr>
         </thead>
         <tbody>
-          {% for item in variant.analysis.member_counts %} {% if item.new_day > 0 or
-          item.new_night > 0 or item.past_day > 0 or item.past_night > 0 %}
+          {% for item in variant.analysis.member_counts %} {% if item.new_day >
+          0 or item.new_night > 0 or item.past_day > 0 or item.past_night > 0 %}
           <tr>
             <td>{{ item.name }}</td>
             <td><strong>{{ item.new_day }}</strong></td>

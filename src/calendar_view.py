@@ -1,4 +1,4 @@
-"""印刷用カレンダー表示データを生成するモジュール。"""
+"""カレンダー表示表示データを生成するモジュール。"""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ def build_calendar_print_data(
     *,
     today: date | None = None,
 ) -> Dict[str, Any]:
-    """スケジュールとNG情報を印刷用カレンダー表示データへ変換する。"""
+    """スケジュールとNG情報をカレンダー表示表示データへ変換する。"""
     if start_date > end_date:
         raise ValueError("start_date must be before or equal to end_date")
 

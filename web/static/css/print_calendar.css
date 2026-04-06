@@ -1,138 +1,200 @@
+/* 印刷用カレンダー — blob iframe でも安定するよう、HTML 側で絶対 URL を推奨 */
+
 :root {
-    --text-color: #222;
-    --muted-color: #666;
-    --border-color: #c9c9c9;
-    --header-bg: #f2f4f7;
-    --weekend-bg: #fcfcfc;
-    --chip-bg: #ffe8a3;
-    --chip-text: #6b5100;
-    --sheet-bg: #ffffff;
-    --toolbar-bg: #f6f7f9;
+    --text: #1d1d1f;
+    --muted: #6e6e73;
+    --border: #d2d2d7;
+    --header-bg: #f5f5f7;
+    --weekend-bg: #fafafa;
+    --outside: #aeaeb2;
+    --chip-bg: #fff3cd;
+    --chip-text: #664d03;
+    --accent: #0071e3;
+    --ng-text: #8b2942;
+    --sheet: #ffffff;
+    --toolbar: #f5f5f7;
 }
 
-* {
+*,
+*::before,
+*::after {
     box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
 }
 
 body {
     margin: 0;
     padding: 16px;
-    font-family: "Yu Gothic UI", "Yu Gothic", "Meiryo", sans-serif;
-    color: var(--text-color);
-    background: #eceff3;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text);
+    background: #eceff1;
 }
 
+/* ツールバー（画面のみ） */
 .print-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--toolbar-bg);
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--toolbar);
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .toolbar-link {
-    color: #004a99;
+    color: var(--accent);
     text-decoration: none;
     font-size: 14px;
+    font-weight: 500;
+}
+
+.toolbar-link:hover {
+    text-decoration: underline;
 }
 
 .toolbar-button {
-    border: 1px solid #004a99;
-    background: #0a63c7;
+    border: none;
+    background: var(--accent);
     color: #fff;
-    border-radius: 6px;
-    padding: 8px 14px;
+    border-radius: 8px;
+    padding: 10px 18px;
     font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
 }
 
 .toolbar-button:hover {
-    background: #084f9d;
+    filter: brightness(1.05);
 }
 
+/* メインシート */
 .sheet {
-    max-width: 1300px;
+    max-width: 1200px;
     margin: 0 auto;
-    background: var(--sheet-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 16px;
+    background: var(--sheet);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px 28px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+
+.sheet-header {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e8e8ed;
 }
 
 .sheet-header h1 {
-    margin: 0;
-    font-size: 24px;
+    margin: 0 0 10px;
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
 }
 
 .meta-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 6px 12px;
-    margin-top: 8px;
-    color: var(--muted-color);
-    font-size: 13px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 6px 16px;
+    color: var(--muted);
+    font-size: 12px;
 }
 
+/* 月ブロック */
 .calendar-month {
-    margin-top: 20px;
+    margin-top: 28px;
     break-inside: avoid;
     page-break-inside: avoid;
 }
 
-.calendar-month h2 {
-    margin: 0 0 8px;
-    font-size: 20px;
+.calendar-month:first-of-type {
+    margin-top: 8px;
 }
 
+.calendar-month h2 {
+    margin: 0 0 12px;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.01em;
+}
+
+/* 7列グリッド — table-layout: fixed で均等割り */
 .calendar-table {
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
+    background: var(--sheet);
 }
 
-.calendar-table th,
-.calendar-table td {
-    border: 1px solid var(--border-color);
-    vertical-align: top;
-}
-
-.calendar-table th {
-    background: var(--header-bg);
-    text-align: center;
-    font-size: 12px;
-    padding: 6px 4px;
-}
-
-.calendar-table td {
-    min-height: 110px;
-    height: 110px;
-    padding: 6px;
+.calendar-table thead th {
+    width: 14.285%;
+    padding: 10px 4px;
     font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--muted);
+    text-transform: none;
+    letter-spacing: 0.04em;
+    background: var(--header-bg);
+    border: 1px solid var(--border);
+}
+
+.calendar-table tbody td {
+    width: 14.285%;
+    border: 1px solid var(--border);
+    vertical-align: top;
+    padding: 0;
+    background: var(--sheet);
+}
+
+.day-cell {
+    min-height: 108px;
+    padding: 8px 7px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
 }
 
 .day-head {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    margin-bottom: 4px;
+    gap: 4px;
+    flex-wrap: wrap;
+    min-height: 1.25em;
 }
 
 .day-number {
     font-weight: 700;
     font-size: 14px;
+    line-height: 1.2;
+    color: var(--text);
+    flex-shrink: 0;
 }
 
 .chip {
     display: inline-block;
     border-radius: 999px;
     padding: 2px 6px;
-    font-size: 10px;
+    font-size: 9px;
+    font-weight: 600;
     line-height: 1.2;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .chip-global {
@@ -142,102 +204,141 @@ body {
 
 .assign-list {
     margin: 0;
-    padding-left: 14px;
-    line-height: 1.25;
+    padding: 0 0 0 14px;
+    font-size: 10px;
+    line-height: 1.4;
+    list-style-position: outside;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .assign-list li {
-    margin: 1px 0;
+    margin: 2px 0;
 }
 
 .assign-empty {
-    color: #a1a1a1;
+    color: #c7c7cc;
+    font-size: 11px;
+    margin-top: 2px;
 }
 
 .week-note {
-    color: var(--muted-color);
-    font-size: 10px;
-}
-
-.member-ng {
-    margin-top: 4px;
-    color: #8a2b2b;
-    font-size: 10px;
+    display: block;
+    color: var(--muted);
+    font-size: 9px;
+    margin-top: 2px;
     line-height: 1.3;
 }
 
+.member-ng {
+    margin-top: auto;
+    padding-top: 4px;
+    border-top: 1px dashed #e5e5ea;
+    color: var(--ng-text);
+    font-size: 9px;
+    line-height: 1.35;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+/* 状態 */
 .is-weekend {
-    background: var(--weekend-bg);
+    background: var(--weekend-bg) !important;
 }
 
 .is-outside-month .day-number,
 .is-outside-range .day-number {
-    color: #b3b3b3;
+    color: var(--outside);
+    font-weight: 600;
+}
+
+.is-outside-month .day-cell,
+.is-outside-range .day-cell {
+    opacity: 0.92;
 }
 
 .is-outside-range .assign-list,
 .is-outside-range .assign-empty,
 .is-outside-range .member-ng,
 .is-outside-range .chip {
-    opacity: 0.35;
+    opacity: 0.45;
 }
 
-.is-today {
-    box-shadow: inset 0 0 0 2px #2a6fdd;
+.is-today .day-cell {
+    box-shadow: inset 0 0 0 2px var(--accent);
+    border-radius: 2px;
 }
 
+/* NG 一覧 */
 .ng-summary {
-    margin-top: 22px;
+    margin-top: 36px;
+    padding-top: 24px;
+    border-top: 1px solid #e8e8ed;
     break-inside: avoid;
     page-break-inside: avoid;
 }
 
 .ng-summary h2 {
-    margin: 0 0 8px;
-    font-size: 20px;
+    margin: 0 0 14px;
+    font-size: 1.15rem;
+    font-weight: 600;
 }
 
 .summary-block {
-    margin-top: 12px;
+    margin-top: 18px;
 }
 
 .summary-block h3 {
-    margin: 0 0 6px;
-    font-size: 15px;
+    margin: 0 0 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
 }
 
 .summary-block p {
     margin: 0;
     font-size: 12px;
-    line-height: 1.5;
+    line-height: 1.55;
+    color: var(--muted);
+    word-break: break-word;
 }
 
 .summary-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 11px;
+    table-layout: auto;
 }
 
 .summary-table th,
 .summary-table td {
-    border: 1px solid var(--border-color);
-    padding: 4px 6px;
+    border: 1px solid var(--border);
+    padding: 8px 10px;
     text-align: left;
     vertical-align: top;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .summary-table th {
     background: var(--header-bg);
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 10px;
 }
 
+.summary-table tr:nth-child(even) td {
+    background: #fafafa;
+}
+
+/* 印刷 */
 @page {
     size: A4 landscape;
-    margin: 8mm;
+    margin: 10mm;
 }
 
 @media print {
     body {
-        margin: 0;
         padding: 0;
         background: #fff;
     }
@@ -251,9 +352,41 @@ body {
         border: none;
         border-radius: 0;
         padding: 0;
+        box-shadow: none;
     }
 
-    .calendar-table td {
-        height: 26mm;
+    .sheet-header {
+        border-bottom-color: #ccc;
+    }
+
+    .calendar-table tbody td {
+        page-break-inside: avoid;
+    }
+
+    .day-cell {
+        min-height: 0;
+        padding: 5px 4px 6px;
+    }
+
+    .calendar-table thead th {
+        padding: 6px 2px;
+    }
+
+    .assign-list {
+        font-size: 9px;
+    }
+
+    .day-number {
+        font-size: 12px;
+    }
+}
+
+@media screen and (max-width: 900px) {
+    .sheet {
+        padding: 14px;
+    }
+
+    .day-cell {
+        min-height: 96px;
     }
 }
